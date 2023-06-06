@@ -2,6 +2,7 @@ from django import forms
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 
 QUESTION_TYPE_CHOICES = [('text', 'Текстовый'), ('single_choice', 'Указать позицию'),
                          ('multiple_choice', 'Выбрать правильный')]
@@ -34,6 +35,9 @@ class Quiz(models.Model):
     def clean(self):
         if not self.title:
             raise ValidationError("Title is required.")
+
+    def get_absolute_url(self):
+        return reverse('quiz-detail', args=[str(self.id)])
 
 
 class Question(models.Model):
