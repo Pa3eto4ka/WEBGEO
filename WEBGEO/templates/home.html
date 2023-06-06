@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My OpenLayers Map</title>
+    <link rel="stylesheet" href="https://openlayers.org/en/v6.5.0/css/ol.css" />
+    <style>
+      .map {
+        height: 400px;
+        width: 100%;
+      }
+      .popup {
+        background-color: white;
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid black;
+      }
+      .popup-closer {
+        text-align: right;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map" class="map"></div>
+    <div id="popup" class="ol-popup">
+      <a href="#" id="popup-closer" class="popup-closer">&times;</a>
+      <div id="popup-content"></div>
+      <button id="task-button">Выполнено</button>
+    </div>
+    <script src="https://openlayers.org/en/v6.5.0/build/ol.js"></script>
+    <script>
+      var map = new ol.Map({
+        target: 'map',
+        layers: [
+          new ol.layer.Tile({
+            source: new ol.source.OSM(),
+          }),
+        ],
+        view: new ol.View({
+          center: [0, 0],
+          zoom: 2,
+        }),
+      });
+
+      var container = document.getElementById('popup');
+      var content = document.getElementById('popup-content');
+      var closer = document.getElementById('popup-closer');
+      var taskButton = document.getElementById('task-button');
+
+      var popup = new ol.Overlay({
+        element: container,
+        autoPan: true,
+        autoPanAnimation: {
+          duration: 250,
+        },
+      });
+      map.addOverlay(popup);
+
+      closer.onclick = function () {
+        popup.setPosition(undefined);
+        closer.blur();
+        return false;
+      };
+
+      var markers = [
+        [0, 0], // маркер 0
+        [10, 10], // маркер 1
+        [-20, 40], // маркер 2
+      ];
+
+      var markerStates = [
+        {
+          completed: false, // Задание не выполнено
+        },
+        {
+          completed: false,
+        },
+        {
+          completed: false,
+        },
+      ];
+
+      var markersArray = [];
+      for (var i = 0; i < markers.length; i++) {
+        var marker = new ol.Feature({
+          geometry: new ol.geom.Point(ol.proj.fromLonLat(markers[i])),
+        });
+        marker.setId(i);
+        markersArray.push(marker);
+      }
+
+      var markerSource = new ol.source.Vector({
+        features: markersArray,
+      });
+
+      var markerLayer = new ol.layer.Vector({
+        source: markerSource,
+        style: new ol.style.Style({
+          image: new ol.style.Icon({
+            src: 'https://openlayers.org/en/v6.5.0/examples/data/icon.png',
+          }),
+        }),
+      });
+      map.addLayer(markerLayer);
+
+      // Обработчик события клика по кнопке
+      taskButton.onclick = function () {
+        var markerIndex = parseInt(popup.dataset.index);
+        var marker = markerLayer.getSource().getFeatureById(markerIndex);
+        var markerCoords = ol.proj.toLonLat(marker.getGeometry().getCoordinates());
+
+        // Проверяем, не было ли задание выполнено ранее
+        if (markerStates[markerIndex].completed == true) {
+          alert('Задание уже выполнено!');
+          return;
+        }
+
+        // Если задание не выполнено, отображаем информацию о маркере в всплывающем окне
+        content.innerHTML =
+          '<p>Вы находитесь здесь:</p>' +
+          '<p>Долгота: ' + markerCoords[0] + '</p>' +
+          '<p>Широта: ' + markerCoords[1] + '</p>' +
+          '<p>Вам необходимо выполнить такое-то задание</p>';
+
+        popup.setPosition(marker.getGeometry().getCoordinates());
+        popup.dataset.index = markerIndex;
+        popup.setVisible(true);
+      };
+    </script>
+  </body>
+</html>

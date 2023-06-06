@@ -1,0 +1,101 @@
+{% load static %}
+
+{% block content %}
+<div class="container">
+  <h1>Добавление нового вопроса</h1>
+  <form method="POST" enctype="multipart/form-data" action="{% url 'add_question' quiz_id=quiz.id %}">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div id="map" class="map"></div>
+    <input type="hidden" name="quiz_id" value="{{ quiz.id }}">
+    <button type="submit" class="btn btn-primary mt-3" name="submit">Сохранить</button>
+    <a href="{% url 'add_question' quiz_id=quiz.id %}" class="btn btn-primary mt-3">Добавить еще вопрос</a>
+
+
+      {% if quiz.id %}
+        <a href="{% url 'quiz_edit' quiz_id=quiz.id %}">Редактировать викторину</a>
+      {% else %}
+        Викторина без ID
+      {% endif %}
+  </form>
+</div>
+
+<!-- Подключаем OpenLayers -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/openlayers/4.6.5/ol.css" />
+<script src="https://unpkg.com/ol/dist/ol.js"></script>
+
+<style>
+.map {
+  height: 400px;
+}
+
+.ol-marker {
+  background-color: transparent;
+  background-image: url('{% static "img/map-marker.png" %}');
+  background-repeat: no-repeat;
+  background-size: contain;
+  width: 2px;
+  height: 3px;
+}
+</style>
+
+<!-- Добавляем скрипт, который покажет карту и позволит выбрать метку -->
+<script>
+window.onload = function() {
+  var map = new ol.Map({
+    target: 'map',
+    layers: [
+      new ol.layer.Tile({
+        source: new ol.source.OSM(),
+      }),
+    ],
+    view: new ol.View({
+      center: ol.proj.fromLonLat([37.6173, 55.7558]),
+      zoom: 8,
+    }),
+  });
+
+  var markersLayer = new ol.layer.Vector({
+    source: new ol.source.Vector(),
+    style: new ol.style.Style({
+      image: new ol.style.Icon({
+        scale: 0.15,
+        anchor: [0.5, 1],
+        src: '{% static "img/map-marker.png" %}',
+      }),
+    }),
+  });
+  map.addLayer(markersLayer);
+
+  // Получаем ссылку на форму
+  var form = document.getElementById('question-form');
+
+  // Устанавливаем функцию-обработчик клика на карту
+  map.on('click', function(event) {
+    var coordinates = event.coordinate;
+    var marker = new ol.Feature({
+      geometry: new ol.geom.Point(coordinates),
+    });
+    markersLayer.getSource().clear();
+    markersLayer.getSource().addFeature(marker);
+    // Заполняем поля формы координатами маркера
+    document.getElementById('id_latitude').value = coordinates[1];
+    document.getElementById('id_longitude').value = coordinates[0];
+  });
+
+  // При отправке формы
+  form.addEventListener('submit', function(event) {
+      event.preventDefault();
+      // Проверяем, что координаты были выбраны
+      if (document.getElementById('id_latitude').value == '' || document.getElementById('id_longitude').value == '') {
+          alert("Выберите место на карте");
+          return false;
+      }
+      // Отправляем форму
+      form.submit();
+  });
+}
+
+
+</script>
+{% endblock content %}

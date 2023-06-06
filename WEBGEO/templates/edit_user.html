@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container">
+  <h1>Edit user</h1>
+  <form method="post" action="{% url 'edit_user' user.id %}">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="role">Role:</label>
+      <select class="form-control" name="role">
+        {% for role in all_roles %}
+          <option value="{{ role.id }}" {% if role in user_roles %}selected{% endif %}>{{ role.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Save</button>
+  </form>
+</div>
+{% endblock %}

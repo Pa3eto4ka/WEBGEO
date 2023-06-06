@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>Результаты прохождения викторин</h1>
+    <ul>
+        {% for result in quiz_results %}
+            <li>{{ result.quiz.name }} - {{ result.score }} баллов ({{ result.date }})</li>
+        {% empty %}
+            <li>Вы пока не прошли ни одной викторины</li>
+        {% endfor %}
+    </ul>
+{% endblock %}

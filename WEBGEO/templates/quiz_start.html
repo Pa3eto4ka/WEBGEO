@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+  <h1>{{ quiz.title }}</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% for question in quiz.questions.all %}
+      <h3>{{ question.text }}</h3>
+      {% for answer in question.answers.all %}
+        <input type="{{ question.question_type }}" name="{{ question.id }}" value="{{ answer.id }}">
+        <label for="{{ answer.id }}">{{ answer.text }}</label>
+        <br>
+      {% endfor %}
+    {% endfor %}
+    <button type="submit">Submit</button>
+  </form>
+{% endblock %}

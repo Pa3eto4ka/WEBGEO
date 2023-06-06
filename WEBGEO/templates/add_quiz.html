@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-6 col-md-8 col-sm-10">
+        <div class="card border-0 rounded-25 shadow-sm">
+          <div class="card-header bg-white border-0">
+            <h1 class="h3 mb-0 font-weight-bold text-primary text-center">Создание новой викторины</h1>
+          </div>
+
+          <div class="card-body px-md-5">
+            <form class="form" method="post">
+              {% csrf_token %}
+
+              <div class="form-group mb-4">
+                <label for="title" class="font-weight-bold text-secondary mb-0">Название викторины:</label>
+                <input type="text" name="title" id="title" class="form-control border-0 rounded-pill bg-secondary text-white" required>
+              </div>
+
+              <div class="form-group mb-4">
+                <label for="description" class="font-weight-bold text-secondary mb-0">Описание:</label>
+                <textarea name="description" id="description" class="form-control border-0 rounded-lg bg-secondary text-white" rows="4" required></textarea>
+              </div>
+
+              <div class="form-group text-center">
+                <button type="submit" class="btn btn-lg btn-primary rounded-pill px-5 py-2 text-white font-weight-bold">Создать викторину</button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    body {
+      background-color: #f9f9f9;
+      font-family: 'Proxima Nova', sans-serif;
+    }
+
+    .form-label {
+      font-weight: 600;
+      color: #666666;
+      font-size: 14px;
+    }
+
+    /* Добавленные стили */
+    input:disabled,
+    textarea:disabled {
+      background-color: #ccc;
+    }
+  </style>
+
+  <!-- Подключение Bootstrap CSS -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+{% endblock %}

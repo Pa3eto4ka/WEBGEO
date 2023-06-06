@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="page-content">
+
+  <div id="quiz">
+    <h2>{{ quiz.title }}</h2>
+    <form method="post">
+      {% csrf_token %}
+      {% for question in questions %}
+      <div>
+        <p>{{ question.question_text }}</p>
+        {% for i in 0|lengthrange:question.answer_options|length|add:-1 %}
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="answers[]" value="{{ i }}">
+          <label class="form-check-label">{{ question.answer_options.i }}</label>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+  </div>
+
+</div><!-- #page-content -->
+{% endblock %}

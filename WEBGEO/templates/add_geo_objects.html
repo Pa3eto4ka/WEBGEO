@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h2>Add Geo Objects</h2>
+
+  <h3>Add Geo Object</h3>
+  <form method="POST">
+    {% csrf_token %}
+    {{ geo_object_form.as_p }}
+    <button type="submit">Add</button>
+  </form>
+
+  <h3>Add Geo Object Group</h3>
+  <form method="POST">
+    {% csrf_token %}
+    {{ geo_object_group_form.as_p }}
+    <button type="submit">Add</button>
+  </form>
+
+  <h2>All Geo Objects</h2>
+  <ul>
+    {% for geo_object in geo_objects %}
+      <li>
+        {{ geo_object.name }} ({{ geo_object.latitude }}, {{ geo_object.longitude }})
+      </li>
+    {% endfor %}
+  </ul>
+
+  <h2>All Geo Object Groups</h2>
+  <ul>
+    {% for geo_object_group in geo_object_groups %}
+      <li>
+        {{ geo_object_group.name }}<br>
+        {{ geo_object_group.description }}<br>
+        Objects:
+        <ul>
+          {% for obj in obj_group.objects.all %}
+            <li>{{ obj.name }}</li>
+          {% endfor %}
+        </ul>
+      </li>
+    {% endfor %}
+  </ul>
+{% endblock content %}

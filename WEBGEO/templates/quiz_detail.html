@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+  <h1>{{ quiz.title }}</h1>
+  <p>{{ quiz.description }}</p>
+  <ul>
+    {% for question in quiz.questions.all %}
+      <li>{{ question.text }}</li>
+      <ul>
+        {% for answer in question.answers.all %}
+          <li>{{ answer.text }}{% if answer.is_correct %} (correct){% endif %}</li>
+        {% endfor %}
+      </ul>
+    {% endfor %}
+  </ul>
+{% endblock %}

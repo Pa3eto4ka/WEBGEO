@@ -1,0 +1,28 @@
+{% extends "account/base.html" %}
+
+{% block content %}
+  <h2>Профиль пользователя</h2>
+  <p>Добро пожаловать, {{ user.username }}!</p>
+  <p>Это ваш профиль.</p>
+  {% if user.is_authenticated %}
+    <p><a href="{% url 'account_logout' %}">Выйти из системы</a></p>
+    <p><a href="/">Главная</a></p>
+  {% endif %}
+
+  {% for quiz in quizzes %}
+    <ul>
+      <li><a href="{% url 'home' %}">Викторина</a></li>
+      <li><a href="{% url 'WEBGEO:add_question' quiz_id=quiz.id %}" class="btn btn-primary">Add a question</a></li>
+    </ul>
+  {% endfor %}
+
+  {% if not user.is_authenticated %}
+    <p><a href="{% url 'account_login' %}">Войти</a></p>
+  {% endif %}
+
+  <form method="POST">
+    {% csrf_token %}
+    <!-- Ваша форма и поля ввода -->
+    <button type="submit">Отправить</button>
+  </form>
+{% endblock %}

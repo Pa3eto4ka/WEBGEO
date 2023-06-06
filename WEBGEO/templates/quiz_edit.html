@@ -1,0 +1,29 @@
+{% block content %}
+<div class="container">
+  <h1>Редактирование викторины</h1>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+
+    <button type="submit" class="btn btn-primary mt-3">Сохранить изменения</button>
+    <a href="{% url 'add_question' quiz.id %}" class="btn btn-primary mt-3">Добавить вопрос</a>
+  </form>
+
+  <h2>Список вопросов</h2>
+
+  {% if quiz_questions %}
+  <ul>
+    {% for question in quiz_questions %}
+    <li>
+      {{ question }}
+      <a href="{% url 'question_edit' question.id %}" class="btn btn-primary btn-sm">Редактировать</a>
+      <a href="{% url 'delete_question' question.id %}" class="btn btn-danger btn-sm">Удалить</a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+    <p>Вопросов пока нет.</p>
+  {% endif %}
+</div>
+{% endblock %}

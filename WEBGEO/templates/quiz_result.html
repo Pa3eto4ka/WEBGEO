@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <div class="container">
+    <h1>Результаты теста: {{ quiz.title }}</h1>
+    <p>Вопросов всего: {{ total_questions }}</p>
+    <p>Правильных ответов: {{ correct_answers_count }}</p>
+    <p>Неправильных ответов: {{ incorrect_answers_count }}</p>
+    <h3>Правильные ответы:</h3>
+    <ul>
+      {% for answer in correct_answers %}
+        <li>{{ answer.question.text }} - {{ answer.text }}</li>
+      {% endfor %}
+    </ul>
+    <h3>Ваши ответы:</h3>
+    <ul>
+      {% for question in quiz.questions.all %}
+        {% with user_answer=user_answers.get(question.id) %}
+          <li>
+            {{ question.text }}
+            {% if user_answer %}
+              - {{ question.answers.get(pk=user_answer).text }}
+            {% else %}
+              - Вы не ответили на этот вопрос
+            {% endif %}
+          </li>
+        {% endwith %}
+      {% endfor %}
+    </ul>
+  </div>
+{% endblock %}

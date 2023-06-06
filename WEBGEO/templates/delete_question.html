@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+
+{% block content %}
+  <h1>Удаление вопроса</h1>
+  <p>Вы уверены, что хотите удалить вопрос "{{ question.text }}"?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button type="submit">Удалить</button>
+  </form>
+{% endblock %}
