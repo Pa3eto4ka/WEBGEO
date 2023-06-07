@@ -1,20 +1,137 @@
-{% extends 'base.html' %}
-
-{% block title %}{{ quiz.title }}{% endblock %}
-
 {% block content %}
-  <h1>{{ quiz.title }}</h1>
-  <form method="post">
-    {% csrf_token %}
-    {% for question in quiz.questions.all %}
-      <h3>{{ question.text }}</h3>
-      {% for answer in question.answers.all %}
-        <input type="{{ question.question_type }}" name="{{ question.id }}" value="{{ answer.id }}">
-        <label for="{{ answer.id }}">{{ answer.text }}</label>
-        <br>
-      {% endfor %}
-    {% endfor %}
-    <button type="submit">Submit</button>
-  </form>
+<div class="quiz-container">
+ <h2>Вопрос {{ question_num }}/{{ total_questions }}</h2>
+ <!-- Отображение вопроса -->
+ <h3>{{ question.text }}</h3>
+ {% if question.image %}
+ <img src="{{ question.image.url }}" alt="{{ question.image.name }}">
+ {% endif %}
+
+ {% if question.question_type == 'm' %}
+ <!-- Отображение вариантов ответа для выбора объекта на карте -->
+ {% for option in options %}
+ <ul>
+  <li>
+   <input type="radio" name="answer" value="{{ option.label }}"> {{ option.text }}
+  </li>
+ </ul>
+ {% endfor %}
+ {% elif question.question_type == 'c' %}
+ <!-- Карта -->
+ <div id="map-container"></div>
+ <button type="button" id="accept-answer-btn">Ответить</button>
+ {% elif question.question_type == 't' %}
+ <!-- Отображение текстового поля для ввода ответа -->
+ <form method="POST" action="{% url 'submit_answer' %}">
+  {% csrf_token %}
+  <input type="text" id="text-answer-input" name="answer">
+  <button type="submit" id="accept-answer-btn">Ответить</button>
+ </form>
+
+ <!-- Отображение кнопки "пропустить вопрос" -->
+ {% if skip_available %}
+ <a href="{% url 'skip_question' %}">Пропустить вопрос</a>
+ {% endif %}
+ {% endif %}
+</div>
 {% endblock %}
 
+{% block script %}
+<script>
+ {% if question.question_type == 'c' %}
+ // Инициализация карты
+ var mymap = L.map('map-container').setView([55.76, 37.64], 5);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+ }).addTo(mymap);
+
+ // Отображение маркера на карте
+ var marker = L.marker([{{ options.0.latitude }}, {{ options.0.longitude }}], {
+  draggable: true
+ }).addTo(mymap);
+
+ // Обработка событий кнопки "Ответить"
+ document.querySelector('#accept-answer-btn').addEventListener('click', function() {
+  fetch('{% url 'check_answer' %}', {
+   method: 'POST',
+   credentials: 'include',
+   headers: {
+    'Content-Type': 'application/json',
+    'X-CSRFToken': getCookie('csrftoken')
+   },
+   body: JSON.stringify({
+    'answer': marker.getLatLng()
+   })
+  }).then(response => response.json()).then(data => {
+   if (data.result === 'correct') {
+    alert('Ответ верный! Вы получили ' + data.score + ' баллов.');
+   } else if (data.result === 'wrong') {
+    alert('Ответ неверный!');
+   }
+  });
+ });
+
+ // Функция вычисления расстояния между двумя точками на карте
+ function calcDistance(lat1, lon1, lat2, lon2) {
+  var R = 6371; // Радиус Земли (км)
+  var dLat = (lat2 - lat1) * Math.PI / 180;
+  var dLon = (lon2 - lon1) * Math.PI / 180;
+  var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+   Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+   Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  var d = R * c; // Расстояние между двумя точками (км)
+  return d;
+ }
+
+// Обработка события перемещения маркера
+marker.on('dragend', function(e) {
+  var latLng = e.target.getLatLng();
+  var distance = calcDistance(latLng.lat, latLng.lng, {{ options.0.latitude }}, {{ options.0.longitude }});
+});
+
+ // Функция для отправки ответа на сервер и получения результата проверки
+  function checkAnswer(event) {
+    event.preventDefault();  // Отменяем отправку формы
+
+    // Получаем ответ пользователя
+    var userAnswer = document.getElementById("text-answer-input").value;
+
+    // Отправляем запрос на сервер
+    fetch("{% url 'check_answer' %}", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+      },
+      body: JSON.stringify({
+        answer: userAnswer,
+      }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.result === "correct") {
+          alert("Ответ верный! Вы получили " + data.score + " баллов.");
+        } else if (data.result === "wrong") {
+          alert("Ответ неверный!");
+        }
+      });
+  }
+
+  {% elif question.question_type == 'm' %}
+  // Проверка выбранного пользователем ответа
+  var answerRadios = document.getElementsByName("answer");
+  for (var i = 0; i < answerRadios.length; i++) {
+    answerRadios[i].addEventListener("change", checkAnswer);
+  }
+  {% endif %}
+
+  // Функция для получения значения cookie по имени
+  function getCookie(name) {
+    var value = "; " + document.cookie;
+    var parts = value.split("; " + name + "=");
+    if (parts.length == 2) return parts.pop().split(";").shift();
+  }
+</script>
+{% endblock %}

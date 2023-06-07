@@ -88,7 +88,7 @@ def signup(request):
         form = UserCreationForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('profile')  # Вернуться на главную страницу после регистрации.
+            return redirect('accounts/profile')  # Вернуться на главную страницу после регистрации.
     else:
         form = UserCreationForm()
     return render(request, 'signup.html', {'form': form})
