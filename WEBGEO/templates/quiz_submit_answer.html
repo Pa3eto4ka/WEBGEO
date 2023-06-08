@@ -1,0 +1,16 @@
+{% block content %}
+  <h1>{{ quiz_attempt.quiz.quiz_name }}</h1>
+  <form method="post">
+    {% csrf_token %}
+    {% for question in questions %}
+    <h3>{{ question.question_text }}</h3>
+    {% for choice in question.choice_set.all %}
+    <div>
+      <input type="radio" name="selected_choice" value="{{ choice.id }}" id="choice{{ choice.id }}">
+      <label for="choice{{ choice.id }}">{{ choice.choice_text }}</label>
+    </div>
+    {% endfor %}
+    {% endfor %}
+    <button type="submit">Submit</button>
+  </form>
+{% endblock %}

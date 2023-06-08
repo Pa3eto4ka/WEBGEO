@@ -169,7 +169,7 @@ def quiz_start(request, quiz_id, question_id):
             answer.question = question
             answer.save()
             messages.success(request, 'Ваш ответ на вопрос был сохранен.')
-            return redirect('start_quiz', quiz_id=quiz_id, question_id=question_id+1)
+            return redirect('quiz_start', quiz_id=quiz_id, question_id=question_id+1)
         else:
             messages.error(request, 'Проверьте правильность заполнения формы.')
 
@@ -181,7 +181,7 @@ def quiz_start(request, quiz_id, question_id):
     else:
         form = TextForm()
 
-    return render(request, 'start_quiz.html', {
+    return render(request, 'quiz_start.html', {
         'quiz': quiz,
         'question': question,
         'form': form,

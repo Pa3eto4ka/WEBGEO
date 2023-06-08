@@ -38,5 +38,6 @@ urlpatterns = [
     path('add_geo_objects', views.add_geo_objects, name='add_geo_objects'),
     path('quiz_result/<int:quiz_id>/', views.quiz_result, name='quiz_result'),
     path('quiz_submit_answer/', views.quiz_submit_answer, name='quiz_submit_answer'),
+    path('quiz_submit_answer/<int:quiz_attempt_id>/', views.quiz_submit_answer, name='quiz_submit_answer'),
     #path('check_answer/', check_answer, name='check_answer'),
 ]

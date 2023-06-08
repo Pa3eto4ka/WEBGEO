@@ -28,7 +28,7 @@
 
             <div class="quiz__card-buttons">
               <a href="{% url 'add_question' quiz.id %}" class="quiz__card-button">Добавить вопрос</a>
-              <a href="{% url 'quiz_start' quiz_id=quiz.id %}" class="quiz__card-button">Пройти викторину</a>
+              <a href="{% url 'quiz_start' quiz_id=quiz.id question_id=1 %}" class="quiz__card-button">Пройти викторину</a>
             </div>
           </div>
         {% endfor %}
