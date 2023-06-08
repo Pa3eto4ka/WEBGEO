@@ -1,3 +1,51 @@
+<script>
+var quiz_id = {{ quiz.id }};
+var questions = {{ questions|safe }};
+var current_question = 0;
+var total_score = 0;
+
+function submitAnswer(answer_id) {
+    var data = {'quiz_id': quiz_id, 'question_id': questions[current_question].id, 'answer_id': answer_id};
+    $.post('/quiz/submit/', data, function(result) {
+         // Обработка ответа от сервера
+         // Обновление текущего вопроса, очков и результата
+         current_question++;
+         total_score += result.score;
+         if (current_question < questions.length) {
+             // Переход к следующему вопросу
+             showQuestion();
+         } else {
+             // Показ результатов викторины
+             showResults();
+         }
+    });
+}
+
+function showQuestion() {
+    // Отображение текущего вопроса
+    $('.question-text').text(questions[current_question].text);
+    $('.answer-button').each(function(index, element) {
+        $(element).text(questions[current_question].answers[index].text);
+        $(element).data('answer-id', questions[current_question].answers[index].id);
+    });
+    $('.score-text').text('Score: ' + total_score);
+}
+
+function showResults() {
+    // Отображение результатов викторины
+    $('.question-container').hide();
+    $('.result-container').show();
+    $('.result-text').text('Your score is: ' + total_score);
+}
+$(document).ready(function() {
+    showQuestion();
+    $('.answer-button').click(function() {
+        var answer_id = $(this).data('answer-id');
+        submitAnswer(answer_id);
+    });
+});
+</script>
+
 {% block content %}
   <h1>{{ quiz.title }}</h1>
   <h2>Question {{ current_question }} of {{ quiz.questions.count }}</h2>
@@ -62,5 +110,18 @@
   <p>Congratulations, you have completed the quiz!</p>
   <a href="{% url 'quiz_result' quiz_attempt.quiz.id %}">View Results</a>
 {% endif %}
+
+<div class="question-container">
+  <h2 class="question-text"></h2>
+  <button class="answer-button btn btn-primary" data-answer-id=""></button>
+  <button class="answer-button btn btn-primary" data-answer-id=""></button>
+  <<button class="answer-button btn btn-primary" data-answer-id=""></button>
+  <button class="answer-button btn btn-primary" data-answer-id=""></button>
+  <p class="score-text"></p>
+</div>
+
+<div class="result-container" style="display:none">
+  <h2 class="result-text"></h2>
+</div>
 
 {% endblock %}

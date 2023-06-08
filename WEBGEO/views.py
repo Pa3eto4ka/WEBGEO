@@ -146,10 +146,16 @@ def quiz_start(request, quiz_id):
     Начало прохождения теста
     """
     quiz = Quiz.objects.get(pk=quiz_id)
-    quiz_questions = quiz.questions.all()
-    total_score = sum([question.max_score for question in quiz_questions])
-    context = {'quiz': quiz, 'questions': quiz_questions, 'total_score': total_score}
-    return render(request, 'quiz_start.html', context)
+    quiz_questions = Question.objects.filter(quiz=quiz).order_by('id')
+    data = []
+    for question in quiz_questions:
+        answers = Answer.objects.filter(question=question).order_by('id')
+        data.append({
+            'id': question.id,
+            'text': question.text,
+            'answers': [{'id': answer.id, 'text': answer.text} for answer in answers]
+        })
+    return render(request, 'quiz_start.html', {'quiz': quiz, 'questions': data})
 
 
 @login_required
