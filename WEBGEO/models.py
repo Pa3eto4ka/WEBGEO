@@ -53,6 +53,7 @@ class Question(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     correct_answer_text = models.CharField(max_length=100, blank=True, null=True)
+    max_score = models.IntegerField()  # Максимальное количество баллов за вопрос
     objects = models.Manager()
 
     def clean(self):
@@ -70,6 +71,7 @@ class Answer(models.Model):
     text = models.TextField()
     is_correct = models.BooleanField()
     objects = models.Manager()
+    score = models.IntegerField()
 
     def __str__(self):
         return self.text

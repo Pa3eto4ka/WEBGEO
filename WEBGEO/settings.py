@@ -133,3 +133,9 @@ LEAFLET_CONFIG = {
     'MIN_ZOOM': 3,
     'MAX_ZOOM': 22,
 }
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'pa3eto4k@gmail.com'
+EMAIL_HOST_PASSWORD = 'Dwq-XQx-vGJ-bZ2'

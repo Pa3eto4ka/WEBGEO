@@ -104,16 +104,6 @@ def quiz_list(request):
 
 
 @login_required
-def quiz_start(request, quiz_id):
-    """
-    Начало прохождения теста
-    """
-    quiz = get_object_or_404(Quiz, id=quiz_id)
-    attempt = QuizAttempt.objects.create(quiz=quiz, user=request.user)
-    return render(request, 'quiz_start.html', {'quiz': quiz, 'attempt': attempt})
-
-
-@login_required
 def quiz_take(request, quiz_id):
     """
     Прохождение теста
@@ -146,6 +136,18 @@ def quiz_take(request, quiz_id):
         return render(request, 'quiz_result.html', context)
 
     context = {'quiz': quiz}
+    return render(request, 'quiz_start.html', context)
+
+
+@login_required
+def quiz_start(request, quiz_id):
+    """
+    Начало прохождения теста
+    """
+    quiz = Quiz.objects.get(pk=quiz_id)
+    quiz_questions = quiz.questions.all()
+    total_score = sum([question.max_score for question in quiz_questions])
+    context = {'quiz': quiz, 'questions': quiz_questions, 'total_score': total_score}
     return render(request, 'quiz_start.html', context)
 
 
@@ -262,6 +264,7 @@ def add_question(request, quiz_id):
             question.quiz = quiz
             question.created_at = timezone.now()
             question.updated_at = timezone.now()
+            question.max_score = 10
             question.save()
             return redirect('quiz_detail', quiz_id=quiz_id)
     else:
@@ -305,3 +308,53 @@ def add_geo_objects(request):
                   {'geo_object_form': geo_object_form,
                    'geo_object_group_form': geo_object_group_form,
                    'geo_objects': geo_objects})
+
+
+@login_required
+def check_answer(request):
+    """
+    Обработка ответа пользователя
+    """
+    if request.method == "POST":
+        # Получение данных из POST-запроса
+        data = json.loads(request.body)
+        answer = data['answer']
+        question_id = int(data['question_id'])
+        quiz_id = int(data['quiz_id'])
+        # Получение объекта вопроса по ID
+        question = Question.objects.get(pk=question_id)
+        # Получение объекта викторины по ID
+        quiz = Quiz.objects.get(pk=quiz_id)
+        # Проверка ответа и начисление баллов
+        if question.question_type == 'c':
+            correct_answer = (question.options.first().latitude, question.options.first().longitude)
+            distance = calc_distance(answer, correct_answer)
+            score = round(question.max_score - distance / 1000, 2)
+            if score < 0:
+                score = 0
+        elif question.question_type == 't':
+            correct_answer = question.options.first().text
+            if answer.lower() == correct_answer.lower():
+                score = question.max_score
+            else:
+                score = 0
+        # Сохранение результатов ответа на вопрос
+        user_answer = UserAnswer.objects.create(user=request.user, quiz=quiz, question=question,
+                                                 user_answer=answer, score=score)
+        # Вычисление общего количества баллов по всем ответам пользователя
+        total_score = get_user_score(request.user, quiz)
+        # Отправка уведомления на почту в случае получения максимального количества баллов
+        if total_score == user_answer.quiz.max_score:
+            print("TRUE")
+            #send_mail(
+            #    'Вы набрали максимальный балл на викторине',
+            #    f'Пользователь {request.user} получил максимальный балл {total_score} на викторине {quiz.title}.',
+            #    'your_email@gmail.com',
+            #    ['admin_email@gmail.com'],
+            #    fail_silently=False,
+            #)
+        # Формирование и возврат JSON-ответа
+        response_data = {'result': 'correct' if score > 0 else 'wrong', 'score': score, 'total_score': total_score}
+        return JsonResponse(response_data)
+    else:
+        return JsonResponse({'result': 'error', 'message': 'Метод запроса должен быть POST.'})
