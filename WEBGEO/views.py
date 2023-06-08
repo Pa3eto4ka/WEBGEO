@@ -149,6 +149,7 @@ def quiz_start(request, quiz_id, question_id):
     # создаем экземпляры QuizAttempt или получаем их, если они уже были созданы
     quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
 
+    result = QuizResult.objects.create(quiz_attempt=quiz_attempt)
     if request.method == 'POST':
         form = None
         if question.question_type == 'choose_on_map':
@@ -412,28 +413,30 @@ def check_answer(request):
         return JsonResponse({'result': 'error', 'message': 'Метод запроса должен быть POST.'})
 
 
-def quiz_submit_answer(request, pk):
-    quiz = get_object_or_404(Quiz, pk=pk)
-    user = request.user
-
+@login_required
+def quiz_submit_answer(request):
     if request.method == 'POST':
-        form = AnswerForm(request.POST)
-
-        if form.is_valid():
-            question = get_object_or_404(Question, pk=form.cleaned_data.get('question_id'))
-            answer = get_object_or_404(Answer, pk=form.cleaned_data.get('answer_id'))
-            user_answer = UserAnswer.objects.create(user=user, quiz=quiz, question=question, answer=answer)
-
-            # Calculate user's score
-            score = user.calculate_score(quiz)
-
-            # Check if all questions has been answered
-            if len(quiz.questions.all()) == len(user.user_answers.filter(quiz=quiz)):
-                user.completed_quizzes.add(quiz)
-
-            return render(request, 'quiz_result.html', {'score': score})
-
+        question = Question.objects.get(id=request.POST['question_id'])
+        quiz = question.quiz
+        if question.question_type == 'ChooseOne':
+            selected_choice = get_object_or_404(Answer, id=request.POST.get('answer_id'))
+            if selected_choice.is_correct:
+                score = 1
+            else:
+                score = 0
+            result, created = QuizResult.objects.get_or_create(quiz=quiz, user=request.user)
+            result.score += score
+            result.save()
+            return JsonResponse({'status': 'OK', 'score': score})
+        elif question.question_type == 'EnterText':
+            submitted_text = request.POST.get('answer_text', '').strip()
+            if submitted_text.lower() == question.answer_set.first().text.lower():
+                score = 1
+            else:
+                score = 0
+            result, created = QuizResult.objects.get_or_create(quiz=quiz, user=request.user)
+            result.score += score
+            result.save()
+            return JsonResponse({'status': 'OK', 'score': score})
     else:
-        form = AnswerForm()
-
-    return render(request, 'quiz.html', {'quiz': quiz, 'form': form})
+        return JsonResponse({'status': 'ERROR', 'message': 'Invalid request method.'})
