@@ -5,8 +5,8 @@ var current_question = 0;
 var total_score = 0;
 
 function submitAnswer(answer_id) {
-    var data = {'quiz_id': quiz_id, 'question_id': questions[current_question].id, 'answer_id': answer_id};
-    $.post('/quiz/submit/', data, function(result) {
+    var data = {'quiz_attempt_id': $('.answer-button').data('quiz-attempt-id'), 'question_id': questions[current_question].id, 'answer_id': answer_id};
+    $.post('/quiz_submit_answer/', data, function(result) {
          // Обработка ответа от сервера
          // Обновление текущего вопроса, очков и результата
          current_question++;
@@ -59,6 +59,18 @@ $(document).ready(function() {
         {% include 'enter_text.html' with question=question %}
     {% endif %}
   </div>
+
+
+{% for question in questions %}
+    {% if question.question_type == 'choose_on_map' %}
+        <!-- форма для отображения карты с определенной точкой на карте -->
+    {% elif question.question_type == 'mark_on_map' %}
+        <!-- форма для выбора точки на карте -->
+    {% else %}
+        <!-- форма для ввода текста -->
+    {% endif %}
+{% endfor %}
+
 
   <div id="navigation-container">
     {% if has_prev_question %}
@@ -113,15 +125,11 @@ $(document).ready(function() {
 
 <div class="question-container">
   <h2 class="question-text"></h2>
-  <button class="answer-button btn btn-primary" data-answer-id=""></button>
-  <button class="answer-button btn btn-primary" data-answer-id=""></button>
-  <<button class="answer-button btn btn-primary" data-answer-id=""></button>
-  <button class="answer-button btn btn-primary" data-answer-id=""></button>
+  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
+  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
+  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
+  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
   <p class="score-text"></p>
-</div>
-
-<div class="result-container" style="display:none">
-  <h2 class="result-text"></h2>
 </div>
 
 {% endblock %}

@@ -7,8 +7,8 @@ from django.contrib.auth.forms import UserCreationForm
 from django.utils import timezone
 
 from django.contrib.auth.models import User, Group
-from .forms import QuestionForm, QuizForm, GeoObjectForm, GeoObjectGroupForm
-from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup, QuizResult
+from .forms import QuestionForm, QuizForm, GeoObjectForm, GeoObjectGroupForm, ChooseOnMapForm, MarkOnMapForm, TextForm, AnswerForm
+from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup, QuizResult, UserAnswer, CompletedQuiz
 
 
 
@@ -140,22 +140,53 @@ def quiz_take(request, quiz_id):
     return render(request, 'quiz_start.html', context)
 
 
-@login_required
-def quiz_start(request, quiz_id):
-    """
-    Начало прохождения теста
-    """
-    quiz = Quiz.objects.get(pk=quiz_id)
-    quiz_questions = Question.objects.filter(quiz=quiz).order_by('id')
-    data = []
-    for question in quiz_questions:
-        answers = Answer.objects.filter(question=question).order_by('id')
-        data.append({
-            'id': question.id,
-            'text': question.text,
-            'answers': [{'id': answer.id, 'text': answer.text} for answer in answers]
-        })
-    return render(request, 'quiz_start.html', {'quiz': quiz, 'questions': data})
+def quiz_start(request, quiz_id, question_id):
+    # получаем текущую викторину
+    quiz = Quiz.objects.get(id=quiz_id)
+
+    # получаем текущий вопрос
+    question = Question.objects.get(id=question_id)
+
+    # создаем экземпляр CompletedQuiz, если его еще нет
+    try:
+        completed_quiz = CompletedQuiz.objects.get(user=request.user, quiz=quiz)
+    except CompletedQuiz.DoesNotExist:
+        completed_quiz = CompletedQuiz(user=request.user, quiz=quiz)
+        completed_quiz.save()
+
+    if request.method == 'POST':
+        form = None
+        if question.question_type == 'choose_on_map':
+            form = ChooseOnMapForm(request.POST)
+        elif question.question_type == 'mark_on_map':
+            form = MarkOnMapForm(request.POST)
+        else:
+            form = TextForm(request.POST)
+
+        if form.is_valid():
+            answer = form.save(commit=False)
+            answer.completed_quiz = completed_quiz
+            answer.question = question
+            answer.save()
+            messages.success(request, 'Ваш ответ на вопрос был сохранен.')
+            return redirect('start_quiz', quiz_id=quiz_id, question_id=question_id+1)
+        else:
+            messages.error(request, 'Проверьте правильность заполнения формы.')
+
+    form = None
+    if question.question_type == 'choose_on_map':
+        form = ChooseOnMapForm()
+    elif question.question_type == 'mark_on_map':
+        form = MarkOnMapForm()
+    else:
+        form = TextForm()
+
+    return render(request, 'start_quiz.html', {
+        'quiz': quiz,
+        'question': question,
+        'form': form,
+        'completed_quiz': completed_quiz,
+    })
 
 
 @login_required
@@ -270,7 +301,6 @@ def add_question(request, quiz_id):
             question = form.save(commit=False)
             question.quiz = quiz
             question.created_at = timezone.now()
-            question.updated_at = timezone.now()
             question.max_score = 10
             question.save()
             return redirect('quiz_detail', quiz_id=quiz_id)
@@ -379,3 +409,30 @@ def check_answer(request):
         return JsonResponse(response_data)
     else:
         return JsonResponse({'result': 'error', 'message': 'Метод запроса должен быть POST.'})
+
+
+def quiz_submit_answer(request, pk):
+    quiz = get_object_or_404(Quiz, pk=pk)
+    user = request.user
+
+    if request.method == 'POST':
+        form = AnswerForm(request.POST)
+
+        if form.is_valid():
+            question = get_object_or_404(Question, pk=form.cleaned_data.get('question_id'))
+            answer = get_object_or_404(Answer, pk=form.cleaned_data.get('answer_id'))
+            user_answer = UserAnswer.objects.create(user=user, quiz=quiz, question=question, answer=answer)
+
+            # Calculate user's score
+            score = user.calculate_score(quiz)
+
+            # Check if all questions has been answered
+            if len(quiz.questions.all()) == len(user.user_answers.filter(quiz=quiz)):
+                user.completed_quizzes.add(quiz)
+
+            return render(request, 'quiz_result.html', {'score': score})
+
+    else:
+        form = AnswerForm()
+
+    return render(request, 'quiz.html', {'quiz': quiz, 'form': form})

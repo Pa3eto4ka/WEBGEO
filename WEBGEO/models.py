@@ -5,6 +5,7 @@ from django.core.exceptions import ValidationError
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.generic import View
+from django.utils import timezone
 
 QUESTION_TYPE_CHOICES = [('text', 'Текстовый'), ('single_choice', 'Указать позицию'),
                          ('multiple_choice', 'Выбрать правильный')]
@@ -16,6 +17,35 @@ class Object(models.Model):
     description = models.TextField()
     latitude = models.FloatField()
     longitude = models.FloatField()
+
+
+class Continent(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
+
+
+class Country(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    code = models.CharField(max_length=2)
+    continent = models.ForeignKey(Continent, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
+class City(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=255)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    country = models.ForeignKey(Country, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
 
 
 class Quiz(models.Model):
@@ -153,6 +183,7 @@ class UserAnswer(models.Model):
 
 
 class QuizResult(models.Model):
+    id = models.AutoField(primary_key=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='User')
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, verbose_name='Quiz')
     question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="Question")
@@ -180,3 +211,14 @@ class QuizSubmitAnswerView(View):
             return redirect("quiz_result", quiz_attempt.quiz.id)
 
         return redirect("quiz_next_question", quiz_attempt_id=quiz_attempt_id)
+
+
+class CompletedQuiz(models.Model):
+    id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
+    score = models.IntegerField(default=0)
+    completed_date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.quiz.title} - {self.user.name}"

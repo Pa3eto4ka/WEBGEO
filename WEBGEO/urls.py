@@ -13,7 +13,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('edit_user/<int:user_id>/', views.edit_user, name='edit_user'),
     path('quiz_list/', views.quiz_list, name='quiz_list'),
-    path('quiz_start/<int:quiz_id>/', views.quiz_start, name='quiz_start'),
+    path('quiz_start/<int:quiz_id>/<int:question_id>/', views.quiz_start, name='quiz_start'),
     path('quiz_next_question/<int:quiz_attempt_id>/', views.quiz_next_question, name='quiz_next_question'),
     path('quiz_submit_answer/<int:quiz_attempt_id>/', views.quiz_submit_answer, name='quiz_submit_answer'),
     path('add_question/', views.add_question, name='add_question'),
@@ -37,5 +37,6 @@ urlpatterns = [
     path('quiz/<int:quiz_id>/', views.quiz_take, name='quiz_take'),
     path('add_geo_objects', views.add_geo_objects, name='add_geo_objects'),
     path('quiz_result/<int:quiz_id>/', views.quiz_result, name='quiz_result'),
+    path('quiz_submit_answer/', views.quiz_submit_answer, name='quiz_submit_answer'),
     #path('check_answer/', check_answer, name='check_answer'),
 ]

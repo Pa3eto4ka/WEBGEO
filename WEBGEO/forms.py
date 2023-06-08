@@ -24,7 +24,8 @@ class QuestionForm(forms.ModelForm):
     class Meta:
         model = Question
         fields = (
-        'title', 'content', 'category', 'text', 'question_type', 'latitude', 'longitude', 'correct_answer_text', 'quiz')
+            'title', 'content', 'category', 'text', 'question_type', 'latitude', 'longitude', 'correct_answer_text',
+            'quiz')
 
 
 class AnswerForm(forms.ModelForm):
@@ -49,3 +50,17 @@ class GeoObjectGroupForm(forms.ModelForm):
     class Meta:
         model = GeoObjectGroup
         fields = ['name', 'description', 'objects']
+
+
+class TextForm(forms.Form):
+    answer_text = forms.CharField(label='Ваш ответ', max_length=255, required=True)
+
+
+class MarkOnMapForm(forms.Form):
+    latitude = forms.DecimalField(label='Широта', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
+    longitude = forms.DecimalField(label='Долгота', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
+
+
+class ChooseOnMapForm(forms.Form):
+    latitude = forms.DecimalField(label='Широта', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
+    longitude = forms.DecimalField(label='Долгота', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
