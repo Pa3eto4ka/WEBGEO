@@ -1,5 +1,5 @@
 from django.shortcuts import render, get_object_or_404, redirect
-from django.http import JsonResponse, HttpResponseRedirect
+from django.http import JsonResponse, HttpResponseRedirect, Http404
 from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -8,7 +8,8 @@ from django.utils import timezone
 
 from django.contrib.auth.models import User, Group
 from .forms import QuestionForm, QuizForm, GeoObjectForm, GeoObjectGroupForm
-from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup
+from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup, QuizResult
+
 
 
 # функция для проверки, является ли пользователь суперпользователем
@@ -309,6 +310,20 @@ def add_geo_objects(request):
                    'geo_object_group_form': geo_object_group_form,
                    'geo_objects': geo_objects})
 
+@login_required
+def quiz_result(request, quiz_id):
+    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    quiz_results = QuizResult.objects.filter(user=request.user, quiz=quiz)
+    if not quiz_results:
+        raise Http404("No results found for the current user and quiz.")
+    quizzes_results_count = quiz_results.count()
+    correct_answers_count = sum(result.is_correct for result in quiz_results)
+    return render(request, 'quiz_result.html', {
+        'quiz': quiz,
+        'correct_answers_count': correct_answers_count,
+        'quizzes_results_count': quizzes_results_count,
+        'quiz_results': quiz_results,
+    })
 
 @login_required
 def check_answer(request):

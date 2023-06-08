@@ -36,5 +36,6 @@ urlpatterns = [
     path('question/<int:question_id>/delete/', views.question_delete, name='delete_question'),
     path('quiz/<int:quiz_id>/', views.quiz_take, name='quiz_take'),
     path('add_geo_objects', views.add_geo_objects, name='add_geo_objects'),
+    path('quiz_result/<int:quiz_id>/', views.quiz_result, name='quiz_result'),
     #path('check_answer/', check_answer, name='check_answer'),
 ]

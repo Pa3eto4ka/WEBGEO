@@ -1,83 +1,66 @@
-{% block title %}{{ quiz.title }}{% endblock %}
-
 {% block content %}
   <h1>{{ quiz.title }}</h1>
-  <form method="post" id="quiz-form">
-    {% csrf_token %}
-    {% for question in questions %}
-      <h3>{{ question.question_text }}</h3>
-      {% if question.question_type == 'c' %}
-        <div id="map-container" style="height: 400px;"></div>
-        <button id="accept-answer-btn" type="button">Ответить</button>
-      {% elif question.question_type == 't' %}
-        <input type="text" id="text-answer-input" name="{{ question.question_id }}">
-        <button type="submit">Ответить</button>
-      {% endif %}
-      <script>
-        {% if question.question_type == 'c' %}
-         // Инициализация карты
-         var mymap = L.map('map-container').setView([55.76, 37.64], 5);
-         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 18,
-         }).addTo(mymap);
+  <h2>Question {{ current_question }} of {{ quiz.questions.count }}</h2>
 
-         // Отображение маркера на карте
-         var marker = L.marker([{{ question.options.0.latitude }}, {{ question.options.0.longitude }}], {
-          draggable: true
-         }).addTo(mymap);
+  <div id="question-container">
+    {% if question.question_type == 'ChooseObject' %}
+        {% include 'choose_object.html' with question=question %}
+    {% elif question.question_type == 'MarkLocation' %}
+        {% include 'mark_location.html' with question=question %}
+    {% elif question.question_type == 'EnterText' %}
+        {% include 'enter_text.html' with question=question %}
+    {% endif %}
+  </div>
 
-         // Обработка событий кнопки "Ответить"
-         document.querySelector('#accept-answer-btn').addEventListener('click', function() {
-          fetch('{% url 'check_answer' %}', {
-           method: 'POST',
-           credentials: 'include',
-           headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': getCookie('csrftoken')
-           },
-           body: JSON.stringify({
-            'answer': marker.getLatLng()
-           })
-          }).then(response => response.json()).then(data => {
-           if (data.result === 'correct') {
-            alert('Ответ верный! Вы получили ' + data.score + ' баллов.');
-           } else if (data.result === 'wrong') {
-            alert('Ответ неверный!');
-           }
-          });
-         });
+  <div id="navigation-container">
+    {% if has_prev_question %}
+      <a href="{% url 'quiz_question' quiz.id prev_question_number %}" class="btn btn-secondary">Prev</a>
+    {% endif %}
 
-         // Функция вычисления расстояния между двумя точками на карте
-         function calcDistance(lat1, lon1, lat2, lon2) {
-          var R = 6371; // Радиус Земли (км)
-          var dLat = (lat2 - lat1) * Math.PI / 180;
-          var dLon = (lon2 - lon1) * Math.PI / 180;
-          var a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-           Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-           Math.sin(dLon / 2) * Math.sin(dLon / 2);
-          var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          var d = R * c;
-          return d;
-         }
-        {% endif %}
+    {% if has_next_question %}
+      <a href="{% url 'quiz_question' quiz.id next_question_number %}" class="btn btn-secondary">Next</a>
+    {% else %}
+      <a href="{% url 'quiz_result' quiz.id %}" class="btn btn-primary">Submit</a>
+    {% endif %}
+  </div>
 
-        // Функция получения CSRF-токена из cookie
-        function getCookie(name) {
-         var cookieValue = null;
-         if (document.cookie && document.cookie !== '') {
-          var cookies = document.cookie.split(';');
-          for (var i = 0; i < cookies.length; i++) {
-           var cookie = cookies[i].trim();
-           // Извлечение CSRF-токена из cookie
-           if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-           }
-          }
-         }
-         return cookieValue;
-        }
-      </script>
+<form method="post" action="{% url 'quiz_submit_answer' quiz_attempt.id %}">
+  {% csrf_token %}
+  <p>{{ current_question }}</p>
+  <ul>
+    {% for answer in current_question.answer_set.all %}
+    <li>
+      <label>
+        <input type="radio" name="answer_id" value="{{ answer.id }}">
+        {{ answer.text }}
+      </label>
+    </li>
     {% endfor %}
+  </ul>
+  <input type="submit" value="Submit">
+</form>
+
+{% if not quiz_attempt.is_finished %}
+  <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt.id %}">
+    {% csrf_token %}
+    <p>{{ current_question }}</p>
+    <ul>
+      {% for answer in current_question.answer_set.all %}
+      <li>
+        <label>
+          <input type="radio" name="answer_id" value="{{ answer.id }}">
+          {{ answer.text }}
+        </label>
+      </li>
+      {% endfor %}
+    </ul>
+    <input type="submit" value="Submit">
   </form>
+  <hr>
+  <a href="{% url 'quiz_next_question' quiz_attempt.id %}">Next Question</a>
+{% else %}
+  <p>Congratulations, you have completed the quiz!</p>
+  <a href="{% url 'quiz_result' quiz_attempt.quiz.id %}">View Results</a>
+{% endif %}
+
 {% endblock %}

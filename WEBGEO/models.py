@@ -3,6 +3,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from django.shortcuts import redirect
+from django.views.generic import View
 
 QUESTION_TYPE_CHOICES = [('text', 'Текстовый'), ('single_choice', 'Указать позицию'),
                          ('multiple_choice', 'Выбрать правильный')]
@@ -148,3 +150,33 @@ class UserAnswer(models.Model):
     longitude = models.FloatField()
 
     objects = models.Manager()
+
+
+class QuizResult(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='User')
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, verbose_name='Quiz')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="Question")
+    answer = models.CharField(max_length=255, verbose_name="Answer", blank=True, null=True)
+    is_correct = models.BooleanField(verbose_name="Is Correct", default=False)
+
+    class Meta:
+        verbose_name = 'User quiz result'
+        verbose_name_plural = 'User quiz results'
+
+    def __str__(self):
+        return f"{self.user.name} - {self.question.text}"
+
+
+class QuizSubmitAnswerView(View):
+    def post(self, request, quiz_attempt_id):
+        quiz_attempt = QuizAttempt.objects.get(id=quiz_attempt_id)
+        answer_id = request.POST.get("answer_id")
+        if not answer_id:
+            return redirect("quiz_next_question", quiz_attempt_id=quiz_attempt_id)
+
+        answer = Answer.objects.get(id=answer_id)
+        quiz_attempt.submit_answer(answer)
+        if quiz_attempt.current_question_number == quiz_attempt.quiz.question_set.count():
+            return redirect("quiz_result", quiz_attempt.quiz.id)
+
+        return redirect("quiz_next_question", quiz_attempt_id=quiz_attempt_id)
