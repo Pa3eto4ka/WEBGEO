@@ -4,12 +4,14 @@ from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from django.urls import reverse
 from django.utils import timezone
 
 from django.contrib.auth.models import User, Group
-from .forms import QuestionForm, QuizForm, GeoObjectForm, GeoObjectGroupForm, ChooseOnMapForm, MarkOnMapForm, TextForm, AnswerForm
-from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup, QuizResult, UserAnswer, CompletedQuiz
-
+from .forms import QuestionForm, QuizForm, GeoObjectForm, GeoObjectGroupForm, ChooseOnMapForm, MarkOnMapForm, TextForm, \
+    AnswerForm
+from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup, QuizResult, UserAnswer, \
+    CompletedQuiz
 
 
 # функция для проверки, является ли пользователь суперпользователем
@@ -140,6 +142,7 @@ def quiz_take(request, quiz_id):
     return render(request, 'quiz_start.html', context)
 
 
+@login_required
 def quiz_start(request, quiz_id, question_id):
     # получаем текущую викторину
     quiz = Quiz.objects.get(id=quiz_id)
@@ -169,7 +172,7 @@ def quiz_start(request, quiz_id, question_id):
             answer.question = question
             answer.save()
             messages.success(request, 'Ваш ответ на вопрос был сохранен.')
-            return redirect('quiz_start', quiz_id=quiz_id, question_id=question_id+1)
+            return redirect(reverse('quiz_start', args=[quiz_id, question_id + 1]))
         else:
             messages.error(request, 'Проверьте правильность заполнения формы.')
 
@@ -346,6 +349,7 @@ def add_geo_objects(request):
                    'geo_object_group_form': geo_object_group_form,
                    'geo_objects': geo_objects})
 
+
 @login_required
 def quiz_result(request, quiz_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
@@ -360,6 +364,7 @@ def quiz_result(request, quiz_id):
         'quizzes_results_count': quizzes_results_count,
         'quiz_results': quiz_results,
     })
+
 
 @login_required
 def check_answer(request):
@@ -391,19 +396,19 @@ def check_answer(request):
                 score = 0
         # Сохранение результатов ответа на вопрос
         user_answer = UserAnswer.objects.create(user=request.user, quiz=quiz, question=question,
-                                                 user_answer=answer, score=score)
+                                                user_answer=answer, score=score)
         # Вычисление общего количества баллов по всем ответам пользователя
         total_score = get_user_score(request.user, quiz)
         # Отправка уведомления на почту в случае получения максимального количества баллов
         if total_score == user_answer.quiz.max_score:
             print("TRUE")
-            #send_mail(
+            # send_mail(
             #    'Вы набрали максимальный балл на викторине',
             #    f'Пользователь {request.user} получил максимальный балл {total_score} на викторине {quiz.title}.',
             #    'your_email@gmail.com',
             #    ['admin_email@gmail.com'],
             #    fail_silently=False,
-            #)
+            # )
         # Формирование и возврат JSON-ответа
         response_data = {'result': 'correct' if score > 0 else 'wrong', 'score': score, 'total_score': total_score}
         return JsonResponse(response_data)
