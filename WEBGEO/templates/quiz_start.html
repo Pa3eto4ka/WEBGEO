@@ -1,4 +1,112 @@
+
+
+{% block content %}
+  <h1>{{ quiz.title }}</h1>
+  <h2>Question {{ current_question }} of {{ quiz.questions.count }}</h2>
+
+<div id="question-container">
+  <!-- Тип вопроса: выбор из нескольких вариантов -->
+  {% if question.question_type == 'ChooseOne' %}
+    <h3>{{ question.text }}</h3>
+    {% for answer in question.answer_set.all %}
+      <div class="form-check">
+        <input class="form-check-input" type="radio" name="answer_id" id="answer{{ answer.id }}" value="{{ answer.id }}">
+        <label class="form-check-label" for="answer{{ answer.id }}">
+          {{ answer.text }}
+        </label>
+      </div>
+    {% endfor %}
+  {% endif %}
+  <!-- Тип вопроса: ввод текста -->
+  {% if question.question_type == 'EnterText' %}
+    <h3>{{ question.text }}</h3>
+    <div class="form-group">
+      <input type="text" class="form-control" name="answer_text" id="answer_text">
+    </div>
+  {% endif %}
+</div>
+
+
+{% for question in questions %}
+    {% if question.question_type == 'choose_on_map' %}
+        <!-- форма для отображения карты с определенной точкой на карте -->
+    {% elif question.question_type == 'mark_on_map' %}
+        <!-- форма для выбора точки на карте -->
+    {% else %}
+        <!-- форма для ввода текста -->
+    {% endif %}
+{% endfor %}
+
+
+  <div id="navigation-container">
+    {% if has_prev_question %}
+      <a href="{% url 'quiz_question' quiz.id prev_question_number %}" class="btn btn-secondary">Prev</a>
+    {% endif %}
+
+    {% if has_next_question %}
+      <a href="{% url 'quiz_question' quiz.id next_question_number %}" class="btn btn-secondary">Next</a>
+    {% else %}
+      <a href="{% url 'quiz_result' quiz.id %}" class="btn btn-primary">Submit</a>
+    {% endif %}
+  </div>
+
+<form method="post" action="{% url 'quiz_submit_answer' quiz_attempt.id %}">
+  {% csrf_token %}
+  <input type="hidden" name="question_id" value="{{ question.id }}">
+  <p>{{ current_question }}</p>
+  <ul>
+    {% for answer in current_question.answer_set.all %}
+    <li>
+      <label>
+        <input type="radio" name="answer_id" value="{{ answer.id }}">
+        {{ answer.text }}
+      </label>
+    </li>
+    {% endfor %}
+  </ul>
+  <input type="submit" value="Submit">
+</form>
+
+{% if not quiz_attempt.is_finished %}
+  <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id %}">
+    {% csrf_token %}
+    <p>{{ current_question }}</p>
+    <ul>
+      {% for answer in current_question.answer_set.all %}
+      <li>
+        <label>
+          <input type="radio" name="answer_id" value="{{ answer.id }}">
+          {{ answer.text }}
+        </label>
+      </li>
+      {% endfor %}
+    </ul>
+    <input type="submit" value="Submit">
+  </form>
+  <hr>
+  <a href="{% url 'quiz_next_question' quiz_attempt.id %}">Next Question</a>
+{% else %}
+  <p>Congratulations, you have completed the quiz!</p>
+  <a href="{% url 'quiz_result' quiz_attempt.quiz.id %}">View Results</a>
+{% endif %}
+
+<div class="question-container">
+  <h2 class="question-text"></h2>
+  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
+  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
+  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
+  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
+  <p class="score-text"></p>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+{% endblock %}
 <script>
+
+
 var quiz_id = {{ quiz.id }};
 var questions = {{ questions|safe }};
 var current_question = 0;
@@ -6,7 +114,7 @@ var total_score = 0;
 
 function submitAnswer(answer_id) {
     var data = {'quiz_attempt_id': $('.answer-button').data('quiz-attempt-id'), 'question_id': questions[current_question].id, 'answer_id': answer_id};
-    $.post('/quiz_submit_answer/', data, function(result) {
+    $.post('{% url "quiz_submit_answer" %}', data, function(result) {
          // Обработка ответа от сервера
          // Обновление текущего вопроса, очков и результата
          current_question++;
@@ -45,91 +153,3 @@ $(document).ready(function() {
     });
 });
 </script>
-
-{% block content %}
-  <h1>{{ quiz.title }}</h1>
-  <h2>Question {{ current_question }} of {{ quiz.questions.count }}</h2>
-
-  <div id="question-container">
-    {% if question.question_type == 'ChooseObject' %}
-        {% include 'choose_object.html' with question=question %}
-    {% elif question.question_type == 'MarkLocation' %}
-        {% include 'mark_location.html' with question=question %}
-    {% elif question.question_type == 'EnterText' %}
-        {% include 'enter_text.html' with question=question %}
-    {% endif %}
-  </div>
-
-
-{% for question in questions %}
-    {% if question.question_type == 'choose_on_map' %}
-        <!-- форма для отображения карты с определенной точкой на карте -->
-    {% elif question.question_type == 'mark_on_map' %}
-        <!-- форма для выбора точки на карте -->
-    {% else %}
-        <!-- форма для ввода текста -->
-    {% endif %}
-{% endfor %}
-
-
-  <div id="navigation-container">
-    {% if has_prev_question %}
-      <a href="{% url 'quiz_question' quiz.id prev_question_number %}" class="btn btn-secondary">Prev</a>
-    {% endif %}
-
-    {% if has_next_question %}
-      <a href="{% url 'quiz_question' quiz.id next_question_number %}" class="btn btn-secondary">Next</a>
-    {% else %}
-      <a href="{% url 'quiz_result' quiz.id %}" class="btn btn-primary">Submit</a>
-    {% endif %}
-  </div>
-
-<form method="post" action="{% url 'quiz_submit_answer' quiz_attempt.id %}">
-  {% csrf_token %}
-  <p>{{ current_question }}</p>
-  <ul>
-    {% for answer in current_question.answer_set.all %}
-    <li>
-      <label>
-        <input type="radio" name="answer_id" value="{{ answer.id }}">
-        {{ answer.text }}
-      </label>
-    </li>
-    {% endfor %}
-  </ul>
-  <input type="submit" value="Submit">
-</form>
-
-{% if not quiz_attempt.is_finished %}
-  <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt.id %}">
-    {% csrf_token %}
-    <p>{{ current_question }}</p>
-    <ul>
-      {% for answer in current_question.answer_set.all %}
-      <li>
-        <label>
-          <input type="radio" name="answer_id" value="{{ answer.id }}">
-          {{ answer.text }}
-        </label>
-      </li>
-      {% endfor %}
-    </ul>
-    <input type="submit" value="Submit">
-  </form>
-  <hr>
-  <a href="{% url 'quiz_next_question' quiz_attempt.id %}">Next Question</a>
-{% else %}
-  <p>Congratulations, you have completed the quiz!</p>
-  <a href="{% url 'quiz_result' quiz_attempt.quiz.id %}">View Results</a>
-{% endif %}
-
-<div class="question-container">
-  <h2 class="question-text"></h2>
-  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
-  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
-  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
-  <button class="answer-button btn btn-primary" data-answer-id="" data-quiz-attempt-id="{{ quiz_attempt.id }}"></button>
-  <p class="score-text"></p>
-</div>
-
-{% endblock %}

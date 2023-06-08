@@ -222,3 +222,13 @@ class CompletedQuiz(models.Model):
 
     def __str__(self):
         return f"{self.quiz.title} - {self.user.name}"
+
+
+class AttemptAnswer(models.Model):
+    quiz_attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE)
+    user_answer = models.CharField(max_length=255)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.quiz_attempt.name} - {self.question.text}"

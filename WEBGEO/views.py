@@ -11,7 +11,7 @@ from django.contrib.auth.models import User, Group
 from .forms import QuestionForm, QuizForm, GeoObjectForm, GeoObjectGroupForm, ChooseOnMapForm, MarkOnMapForm, TextForm, \
     AnswerForm
 from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup, QuizResult, UserAnswer, \
-    CompletedQuiz
+    CompletedQuiz, AttemptAnswer
 
 
 # функция для проверки, является ли пользователь суперпользователем
@@ -142,20 +142,12 @@ def quiz_take(request, quiz_id):
     return render(request, 'quiz_start.html', context)
 
 
-@login_required
 def quiz_start(request, quiz_id, question_id):
-    # получаем текущую викторину
-    quiz = Quiz.objects.get(id=quiz_id)
+    quiz = get_object_or_404(Quiz, pk=quiz_id)
+    question = get_object_or_404(Question, pk=question_id)
 
-    # получаем текущий вопрос
-    question = Question.objects.get(id=question_id)
-
-    # создаем экземпляр CompletedQuiz, если его еще нет
-    try:
-        completed_quiz = CompletedQuiz.objects.get(user=request.user, quiz=quiz)
-    except CompletedQuiz.DoesNotExist:
-        completed_quiz = CompletedQuiz(user=request.user, quiz=quiz)
-        completed_quiz.save()
+    # создаем экземпляры QuizAttempt или получаем их, если они уже были созданы
+    quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
 
     if request.method == 'POST':
         form = None
@@ -168,11 +160,15 @@ def quiz_start(request, quiz_id, question_id):
 
         if form.is_valid():
             answer = form.save(commit=False)
-            answer.completed_quiz = completed_quiz
-            answer.question = question
-            answer.save()
+            attempt_answer = AttemptAnswer.objects.create(question=question, answer=answer, quiz_attempt=quiz_attempt)
             messages.success(request, 'Ваш ответ на вопрос был сохранен.')
-            return redirect(reverse('quiz_start', args=[quiz_id, question_id + 1]))
+            next_question = Question.objects.filter(quiz=quiz, pk__gt=question_id).order_by('pk').first()
+            if next_question:
+                # если есть следующий вопрос, перенаправляем на страницу со следующим вопросом
+                return redirect(reverse('quiz_start', args=[quiz_id, next_question.id]))
+            else:
+                # иначе, перенаправляем на страницу результатов
+                return redirect(reverse('quiz_result', args=[quiz_id]))
         else:
             messages.error(request, 'Проверьте правильность заполнения формы.')
 
@@ -188,7 +184,7 @@ def quiz_start(request, quiz_id, question_id):
         'quiz': quiz,
         'question': question,
         'form': form,
-        'completed_quiz': completed_quiz,
+        'quiz_attempt_id': quiz_attempt.id,
     })
 
 
