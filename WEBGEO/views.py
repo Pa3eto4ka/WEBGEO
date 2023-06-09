@@ -144,12 +144,9 @@ def quiz_take(request, quiz_id):
 
 def quiz_start(request, quiz_id, question_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
+    quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
     question = get_object_or_404(Question, pk=question_id)
 
-    # создаем экземпляры QuizAttempt или получаем их, если они уже были созданы
-    quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
-
-    result = QuizResult.objects.create(quiz_attempt=quiz_attempt)
     if request.method == 'POST':
         form = None
         if question.question_type == 'choose_on_map':
@@ -185,6 +182,7 @@ def quiz_start(request, quiz_id, question_id):
         'quiz': quiz,
         'question': question,
         'form': form,
+        'quiz_attempt': quiz_attempt,
         'quiz_attempt_id': quiz_attempt.id,
     })
 

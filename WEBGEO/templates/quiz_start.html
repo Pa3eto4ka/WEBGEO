@@ -50,7 +50,7 @@
     {% endif %}
   </div>
 
-<form method="post" action="{% url 'quiz_submit_answer' result.id %}">
+<form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id %}">
   {% csrf_token %}
   <input type="hidden" name="question_id" value="{{ question.id }}">
   <p>{{ current_question }}</p>

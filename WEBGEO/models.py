@@ -197,6 +197,15 @@ class QuizResult(models.Model):
     def __str__(self):
         return f"{self.user.name} - {self.question.text}"
 
+    def __init__(self, quiz_attempt=None, **kwargs):
+        self.quiz_attempt = quiz_attempt
+        super().__init__(**kwargs)
+
+    def save(self, *args, **kwargs):
+        if not self.quiz_attempt:
+            raise ValueError('QuizResult must have a quiz_attempt.')
+        super().save(*args, **kwargs)
+
 
 class QuizSubmitAnswerView(View):
     def post(self, request, quiz_attempt_id):
