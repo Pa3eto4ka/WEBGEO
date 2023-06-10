@@ -181,6 +181,7 @@ def quiz_start(request, quiz_id, question_id):
     return render(request, 'quiz_start.html', {
         'quiz': quiz,
         'question': question,
+        'questions': questions,
         'form': form,
         'quiz_attempt': quiz_attempt,
         'quiz_attempt_id': quiz_attempt.id,

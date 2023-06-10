@@ -1,155 +1,93 @@
-
-
 {% block content %}
   <h1>{{ quiz.title }}</h1>
   <h2>Question {{ current_question }} of {{ quiz.questions.count }}</h2>
-
-<div id="question-container">
-  <!-- Тип вопроса: выбор из нескольких вариантов -->
-  {% if question.question_type == 'ChooseOne' %}
-    <h3>{{ question.text }}</h3>
-    {% for answer in question.answer_set.all %}
-      <div class="form-check">
-        <input class="form-check-input" type="radio" name="answer_id" id="answer{{ answer.id }}" value="{{ answer.id }}">
-        <label class="form-check-label" for="answer{{ answer.id }}">
-          {{ answer.text }}
-        </label>
-      </div>
-    {% endfor %}
-  {% endif %}
-  <!-- Тип вопроса: ввод текста -->
-  {% if question.question_type == 'EnterText' %}
-    <h3>{{ question.text }}</h3>
-    <div class="form-group">
-      <input type="text" class="form-control" name="answer_text" id="answer_text">
-    </div>
-  {% endif %}
-</div>
-
-
-{% for question in questions %}
-    {% if question.question_type == 'choose_on_map' %}
-        <!-- форма для отображения карты с определенной точкой на карте -->
-    {% elif question.question_type == 'mark_on_map' %}
-        <!-- форма для выбора точки на карте -->
-    {% else %}
-        <!-- форма для ввода текста -->
+  <div id="question-container">
+    <!-- Тип вопроса: выбор из нескольких вариантов -->
+    {% if forloop.parentloop.question.question_type == 'ChooseOne' %}
+      <h3>{{ forloop.parentloop.question.text }}</h3>
+      {% for answer in forloop.parentloop.question.answer_set.all %}
+        <div class="form-check">
+          <input class="form-check-input" type="radio" name="answer_id" id="answer{{ answer.id }}" value="{{ answer.id }}">
+          <label class="form-check-label" for="answer{{ answer.id }}">
+            {{ answer.text }}
+          </label>
+        </div>
+      {% endfor %}
     {% endif %}
-{% endfor %}
-
-
+    <!-- Тип вопроса: ввод текста -->
+    {% if forloop.parentloop.question.question_type == 'EnterText' %}
+      <h3>{{ forloop.parentloop.question.text }}</h3>
+      <div class="form-group">
+        <input type="text" class="form-control" name="answer_text" id="answer_text">
+      </div>
+    {% endif %}
+  </div>
   <div id="navigation-container">
     {% if has_prev_question %}
       <a href="{% url 'quiz_question' quiz.id prev_question_number %}" class="btn btn-secondary">Prev</a>
     {% endif %}
-
     {% if has_next_question %}
       <a href="{% url 'quiz_question' quiz.id next_question_number %}" class="btn btn-secondary">Next</a>
     {% else %}
       <a href="{% url 'quiz_result' quiz.id %}" class="btn btn-primary">Submit</a>
     {% endif %}
   </div>
-
-<form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id %}">
-  {% csrf_token %}
-  <input type="hidden" name="question_id" value="{{ question.id }}">
-  <p>{{ current_question }}</p>
-  <ul>
-    {% for answer in current_question.answer_set.all %}
-    <li>
-      <label>
-        <input type="radio" name="answer_id" value="{{ answer.id }}">
-        {{ answer.text }}
-      </label>
-    </li>
-    {% endfor %}
-  </ul>
-  <input type="submit" value="Submit">
-</form>
-
-{% if not quiz_attempt.is_finished %}
   <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id %}">
     {% csrf_token %}
+    <input type="hidden" name="question_id" value="{{ current_question.id }}">
     <p>{{ current_question }}</p>
     <ul>
       {% for answer in current_question.answer_set.all %}
-      <li>
-        <label>
-          <input type="radio" name="answer_id" value="{{ answer.id }}">
-          {{ answer.text }}
-        </label>
-      </li>
+        <li>
+          <label>
+            <input type="radio" name="answer_id" value="{{ answer.id }}">
+            {{ answer.text }}
+          </label>
+        </li>
       {% endfor %}
     </ul>
     <input type="submit" value="Submit">
   </form>
-  <hr>
-  <a href="{% url 'quiz_next_question' quiz_attempt.id %}">Next Question</a>
-{% else %}
-  <p>Congratulations, you have completed the quiz!</p>
-  <a href="{% url 'quiz_result' quiz_attempt.quiz.id %}">View Results</a>
-{% endif %}
-
-<div class="question-container">
-  <h2 class="question-text"></h2>
-  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
-  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
-  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
-  <button class="answer-button" data-answer-id="{{ answer.id }}" type="button">{{ answer.text }}</button>
-  <p class="score-text"></p>
-</div>
-
+  {% if not quiz_attempt.is_finished %}
+    <hr>
+    <button class="answer-button" data-answer-id="{{ answer.id }}" data-quiz-attempt-id="{{ quiz_attempt.id }}" type="button">{{ answer.text }}</button>
+  {% else %}
+    <p>Congratulations, you have completed the quiz!</p>
+    <a href="{% url 'quiz_result' quiz_attempt.quiz.id %}">View Results</a>
+  {% endif %}
 {% endblock %}
-
 {% block extra_js %}
-    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
-{% endblock %}
-<script>
-
-
-var quiz_id = {{ quiz.id }};
-var questions = {{ questions|safe }};
-var current_question = 0;
-var total_score = 0;
-
-function submitAnswer(answer_id) {
-    var data = {'quiz_attempt_id': $('.answer-button').data('quiz-attempt-id'), 'question_id': questions[current_question].id, 'answer_id': answer_id};
-    $.post('{% url "quiz_submit_answer" %}', data, function(result) {
-         // Обработка ответа от сервера
-         // Обновление текущего вопроса, очков и результата
-         current_question++;
-         total_score += result.score;
-         if (current_question < questions.length) {
-             // Переход к следующему вопросу
-             showQuestion();
-         } else {
-             // Показ результатов викторины
-             showResults();
-         }
-    });
-}
-
-function showQuestion() {
-    // Отображение текущего вопроса
-    $('.question-text').text(questions[current_question].text);
-    $('.answer-button').each(function(index, element) {
-        $(element).text(questions[current_question].answers[index].text);
-        $(element).data('answer-id', questions[current_question].answers[index].id);
-    });
-    $('.score-text').text('Score: ' + total_score);
-}
-
-function showResults() {
-    // Отображение результатов викторины
-    $('.question-container').hide();
-    $('.result-container').show();
-    $('.result-text').text('Your score is: ' + total_score);
-}
-$(document).ready(function() {
-    showQuestion();
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script>
+    var quiz_id = {{ quiz.id }};
+    var questions = {{ questions|safe }};
+    var current_question = 0;
+    var total_score = 0;
+    function submitAnswer(answer_id, quiz_attempt_id) {
+      var data = {'quiz_attempt_id': quiz_attempt_id, 'question_id': questions[current_question].id, 'answer_id': answer_id};
+      $.post('{% url "quiz_submit_answer"', data, function(response) {
+        // Обработка ответа
+        console.log(response);
+        if (response.is_correct) {
+          // Если ответ верный, добавляем баллы к общему счету
+          total_score += response.score;
+        }
+        // Переходим к следующему вопросу
+        current_question++;
+        // Если это был последний вопрос, перенаправляем на страницу результатов
+        if (current_question == questions.length) {
+          window.location.href = "{% url 'quiz_result' quiz_id=quiz_attempt.quiz.id quiz_attempt_id=quiz_attempt.id %}";
+        } else {
+          // Иначе, обновляем содержимое страницы
+          $('#question-container').load("{% url 'quiz_question' quiz_attempt.quiz.id quiz_attempt_id current_question %}");
+        }
+      });
+    }
+    // Обработчик клика по кнопке с ответом
     $('.answer-button').click(function() {
-        var answer_id = $(this).data('answer-id');
-        submitAnswer(answer_id);
+      var answer_id = $(this).data('answer-id');
+      var quiz_attempt_id = $(this).data('quiz-attempt-id');
+      submitAnswer(answer_id, quiz_attempt_id);
     });
-});
-</script>
+  </script>
+{% endblock %}
