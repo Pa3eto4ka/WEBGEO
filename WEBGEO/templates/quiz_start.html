@@ -3,7 +3,7 @@
   <h2>Question {{ current_question_number }} of {{ total_questions }}</h2>
   <div>
     <p>{{ question.text }}</p>
-    <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id %}">
+    <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id=quiz_attempt_id %}">
       {% csrf_token %}
       <input type="hidden" name="question_id" value="{{ question.id }}">
       {% if question.question_type == 'ChooseOne' %}
@@ -27,12 +27,12 @@
     </form>
 
     {% if has_prev_question %}
-      <a href="{% url 'quiz_question' quiz.id quiz_attempt_id prev_question_number %}" class="btn btn-secondary">Prev</a>
+      <a href="{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question_number=prev_question_number %}" class="btn btn-secondary">Prev</a>
     {% endif %}
     {% if has_next_question %}
-      <a href="{% url 'quiz_question' quiz.id quiz_attempt_id next_question_number %}" class="btn btn-secondary">Next</a>
+      <a href="{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question_number=next_question_number %}" class="btn btn-secondary">Next</a>
     {% else %}
-      <a href="{% url 'quiz_result' quiz_attempt_id=quiz_attempt_id %}" class="btn btn-primary">Submit</a>
+      <a href="{% url 'quiz_result' quiz_id=quiz.id quiz_attempt_id=quiz_attempt_id %}" class="btn btn-primary">Submit</a>
     {% endif %}
   </div>
 {% endblock %}
@@ -44,25 +44,29 @@
     var questions = {{ questions|safe }};
     var current_question = {{ current_question }};
     var total_score = 0;
+
     function submitAnswer(answer_id, quiz_attempt_id) {
       var data = {'quiz_attempt_id': quiz_attempt_id, 'question_id': questions[current_question].id, 'answer_id': answer_id};
-      $.post('{% url "quiz_submit_answer" quiz_attempt_id %}', data, function(response) {
+      $.post('{% url "quiz_submit_answer" quiz_attempt_id=quiz_attempt_id %}', data, function(response) {
         console.log(response);
         if (response.is_correct) {
           total_score += response.score;
         }
         current_question++;
         if (current_question == questions.length) {
-          window.location.href = "{% url 'quiz_result' quiz_attempt_id=quiz_attempt_id %}";
+          window.location.href = "{% url 'quiz_result' quiz_id=quiz.id quiz_attempt_id=quiz_attempt_id %}";
         } else {
-          $('#question-container').load("{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question=current_question %}");
+          $('#question-container').load("{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question_number=current_question %}");
         }
       });
     }
-    $('.answer-button').click(function() {
-      var answer_id = $(this).data('answer-id');
-      var quiz_attempt_id = $(this).data('quiz-attempt-id');
-      submitAnswer(answer_id, quiz_attempt_id);
+
+    $(document).ready(function() {
+      $('.answer-button').click(function() {
+        var answer_id = $(this).data('answer-id');
+        var quiz_attempt_id = $(this).data('quiz-attempt-id');
+        submitAnswer(answer_id, quiz_attempt_id);
+      });
     });
   </script>
 {% endblock %}
