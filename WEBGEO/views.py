@@ -112,6 +112,7 @@ def quiz_start(request, quiz_id, question_id):
     quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
     question = get_object_or_404(Question, pk=question_id)
 
+
     if request.method == 'POST':
         form = None
         if question.question_type == 'choose_on_map':
@@ -309,6 +310,17 @@ def add_geo_objects(request):
                   {'geo_object_form': geo_object_form,
                    'geo_object_group_form': geo_object_group_form,
                    'geo_objects': geo_objects})
+
+@login_required
+def quiz_question(request, quiz_attempt_id, current_question):
+    # получаем текущий вопрос из базы данных
+    question = Question.objects.get(quiz__attempt__id=quiz_attempt_id, number=current_question)
+
+    # получаем список ответов на текущий вопрос
+    answers = Answer.objects.filter(question=question)
+
+    # рендерим шаблон и передаем в него данные
+    return render(request, 'quiz_question.html', {'question': question, 'answers': answers})
 
 
 @login_required
