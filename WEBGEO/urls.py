@@ -34,7 +34,6 @@ urlpatterns = [
     path('quiz/<int:quiz_id>/edit/', views.quiz_edit, name='quiz_edit'),
     path('question/<int:question_id>/edit/', views.question_edit, name='question_edit'),
     path('question/<int:question_id>/delete/', views.question_delete, name='delete_question'),
-    path('quiz/<int:quiz_id>/', views.quiz_take, name='quiz_take'),
     path('add_geo_objects', views.add_geo_objects, name='add_geo_objects'),
     path('quiz_result/<int:quiz_id>/', views.quiz_result, name='quiz_result'),
     path('quiz_submit_answer/', views.quiz_submit_answer, name='quiz_submit_answer'),

@@ -107,41 +107,6 @@ def quiz_list(request):
 
 
 @login_required
-def quiz_take(request, quiz_id):
-    """
-    Прохождение теста
-    """
-    quiz = get_object_or_404(Quiz, pk=quiz_id)
-
-    if request.method == 'POST':
-        user_answers = {}
-        for question in quiz.questions.all():
-            answer_id = request.POST.get(str(question.id), None)
-            if answer_id:
-                user_answers[question.id] = int(answer_id)
-
-        correct_answers = Answer.objects.filter(question__quiz=quiz, is_correct=True)
-
-        total_questions = quiz.questions.count()
-        correct_answers_count = sum(1 for question in quiz.questions.all()
-                                    if user_answers.get(question.id) and Answer.objects.get(
-            pk=user_answers[question.id]).is_correct)
-        incorrect_answers_count = total_questions - correct_answers_count
-
-        context = {
-            'quiz': quiz,
-            'total_questions': total_questions,
-            'correct_answers_count': correct_answers_count,
-            'incorrect_answers_count': incorrect_answers_count,
-            'correct_answers': correct_answers,
-            'user_answers': user_answers,
-        }
-        return render(request, 'quiz_result.html', context)
-
-    context = {'quiz': quiz}
-    return render(request, 'quiz_start.html', context)
-
-@login_required
 def quiz_start(request, quiz_id, question_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
