@@ -26,14 +26,15 @@
       <input type="submit" value="Submit">
     </form>
 
-    {% if has_prev_question %}
-      <a href="{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question_number=prev_question_number %}" class="btn btn-secondary">Prev</a>
-    {% endif %}
-    {% if has_next_question %}
-      <a href="{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question_number=next_question_number %}" class="btn btn-secondary">Next</a>
-    {% else %}
-      <a href="{% url 'quiz_result' quiz_id=quiz.id quiz_attempt_id=quiz_attempt_id %}" class="btn btn-primary">Submit</a>
-    {% endif %}
+{% if current_question_number > 1 %}
+  <a href="{% url 'quiz_question' quiz_attempt_id=quiz_attempt.id current_question_number=current_question_number|add:'-1' %}" class="btn btn-primary">Назад</a>
+{% endif %}
+
+{% if current_question %}
+  <a href="{% url 'quiz_question' quiz_attempt_id=quiz_attempt.id current_question_number=current_question|add:'1' %}" class="btn btn-primary ml-auto">Дальше</a>
+{% else %}
+  <a href="{% url 'quiz_result' quiz_attempt_id=quiz_attempt.id %}" class="btn btn-primary ml-auto">Узнать результаты</a>
+{% endif %}
   </div>
 {% endblock %}
 
@@ -54,9 +55,9 @@
         }
         current_question++;
         if (current_question == questions.length) {
-          window.location.href = "{% url 'quiz_result' quiz_id=quiz.id quiz_attempt_id=quiz_attempt_id %}";
+          window.location.href = "{% url 'quiz_result' quiz_attempt_id=quiz_attempt_id %}";
         } else {
-          $('#question-container').load("{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question_number=current_question %}");
+          $('#question-container').load("{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question_number=current_question_number %}");
         }
       });
     }

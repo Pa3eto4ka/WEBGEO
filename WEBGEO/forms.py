@@ -61,6 +61,8 @@ class MarkOnMapForm(forms.Form):
     longitude = forms.DecimalField(label='Долгота', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
 
 
+
 class ChooseOnMapForm(forms.Form):
     latitude = forms.DecimalField(label='Широта', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
     longitude = forms.DecimalField(label='Долгота', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
+

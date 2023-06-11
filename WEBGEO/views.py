@@ -111,7 +111,9 @@ def quiz_start(request, quiz_id, question_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
     question = get_object_or_404(Question, pk=question_id)
-
+    quiz_questions = list(Question.objects.filter(quiz=quiz).order_by('pk'))
+    current_question_number = quiz_questions.index(question) + 1
+    total_questions = len(quiz_questions)
 
     if request.method == 'POST':
         form = None
@@ -123,13 +125,24 @@ def quiz_start(request, quiz_id, question_id):
             form = TextForm(request.POST)
 
         if form.is_valid():
-            answer = form.save(commit=False)
-            attempt_answer = AttemptAnswer.objects.create(question=question, answer=answer, quiz_attempt=quiz_attempt)
+            # создаем объект AttemptAnswer и устанавливаем его атрибуты
+            attempt_answer = AttemptAnswer()
+            attempt_answer.question = question
+            attempt_answer.quiz_attempt = quiz_attempt
+            if question.question_type == 'choose_on_map':
+                attempt_answer.answer_text = 'Shir:%s Dol:%s' % (
+                    form.cleaned_data.get('latitude'), form.cleaned_data.get('longitude'))
+            elif question.question_type == 'mark_on_map':
+                attempt_answer.answer_text = 'Shir:%s Dol:%s' % (
+                    form.cleaned_data.get('latitude'), form.cleaned_data.get('longitude'))
+            else:
+                attempt_answer.answer_text = form.cleaned_data.get('answer_text')
+            attempt_answer.save()
             messages.success(request, 'Ваш ответ на вопрос был сохранен.')
-            next_question = Question.objects.filter(quiz=quiz, pk__gt=question_id).order_by('pk').first()
+            next_question = quiz_questions[quiz_questions.index(question) + 1] if quiz_questions.index(question) < len(quiz_questions) - 1 else None
             if next_question:
                 # если есть следующий вопрос, перенаправляем на страницу со следующим вопросом
-                return redirect(reverse('quiz_start', args=[quiz_id, next_question.id]))
+                return redirect(reverse('quiz_start', args=[quiz_id, next_question.pk]))
             else:
                 # иначе, перенаправляем на страницу результатов
                 return redirect(reverse('quiz_result', args=[quiz_id]))
@@ -143,14 +156,15 @@ def quiz_start(request, quiz_id, question_id):
         form = MarkOnMapForm()
     else:
         form = TextForm()
-
     return render(request, 'quiz_start.html', {
         'quiz': quiz,
         'question': question,
-        'questions': questions,
+        'quiz_questions': quiz_questions,
         'form': form,
         'quiz_attempt': quiz_attempt,
         'quiz_attempt_id': quiz_attempt.id,
+        'current_question_number': current_question_number,
+        'total_questions': total_questions,
     })
 
 
@@ -310,6 +324,7 @@ def add_geo_objects(request):
                   {'geo_object_form': geo_object_form,
                    'geo_object_group_form': geo_object_group_form,
                    'geo_objects': geo_objects})
+
 
 @login_required
 def quiz_question(request, quiz_attempt_id, current_question):
