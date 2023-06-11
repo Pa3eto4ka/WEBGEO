@@ -1,89 +1,64 @@
 {% block content %}
   <h1>{{ quiz.title }}</h1>
-  <h2>Question {{ current_question }} of {{ quiz.questions.count }}</h2>
-  <div id="question-container">
-    <!-- Тип вопроса: выбор из нескольких вариантов -->
-    {% if forloop.parentloop.question.question_type == 'ChooseOne' %}
-      <h3>{{ forloop.parentloop.question.text }}</h3>
-      {% for answer in forloop.parentloop.question.answer_set.all %}
-        <div class="form-check">
-          <input class="form-check-input" type="radio" name="answer_id" id="answer{{ answer.id }}" value="{{ answer.id }}">
-          <label class="form-check-label" for="answer{{ answer.id }}">
-            {{ answer.text }}
-          </label>
+  <h2>Question {{ current_question_number }} of {{ total_questions }}</h2>
+  <div>
+    <p>{{ question.text }}</p>
+    <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id %}">
+      {% csrf_token %}
+      <input type="hidden" name="question_id" value="{{ question.id }}">
+      {% if question.question_type == 'ChooseOne' %}
+        <ul>
+          {% for answer in question.answer_set.all %}
+            <li>
+              <label>
+                <input type="radio" name="answer_id" value="{{ answer.id }}">
+                {{ answer.text }}
+              </label>
+            </li>
+          {% endfor %}
+        </ul>
+      {% elif question.question_type == 'EnterText' %}
+        <div class="form-group">
+          <input type="text" class="form-control" name="answer_text" id="answer_text">
         </div>
-      {% endfor %}
-    {% endif %}
-    <!-- Тип вопроса: ввод текста -->
-    {% if forloop.parentloop.question.question_type == 'EnterText' %}
-      <h3>{{ forloop.parentloop.question.text }}</h3>
-      <div class="form-group">
-        <input type="text" class="form-control" name="answer_text" id="answer_text">
-      </div>
-    {% endif %}
-  </div>
-  <div id="navigation-container">
+      {% endif %}
+
+      <input type="submit" value="Submit">
+    </form>
+
     {% if has_prev_question %}
-      <a href="{% url 'quiz_question' quiz.id prev_question_number %}" class="btn btn-secondary">Prev</a>
+      <a href="{% url 'quiz_question' quiz.id quiz_attempt_id prev_question_number %}" class="btn btn-secondary">Prev</a>
     {% endif %}
     {% if has_next_question %}
-      <a href="{% url 'quiz_question' quiz.id next_question_number %}" class="btn btn-secondary">Next</a>
+      <a href="{% url 'quiz_question' quiz.id quiz_attempt_id next_question_number %}" class="btn btn-secondary">Next</a>
     {% else %}
-      <a href="{% url 'quiz_result' quiz.id %}" class="btn btn-primary">Submit</a>
+      <a href="{% url 'quiz_result' quiz_attempt_id=quiz_attempt_id %}" class="btn btn-primary">Submit</a>
     {% endif %}
   </div>
-  <form method="post" action="{% url 'quiz_submit_answer' quiz_attempt_id %}">
-    {% csrf_token %}
-    <input type="hidden" name="question_id" value="{{ current_question.id }}">
-    <p>{{ current_question }}</p>
-    <ul>
-      {% for answer in current_question.answer_set.all %}
-        <li>
-          <label>
-            <input type="radio" name="answer_id" value="{{ answer.id }}">
-            {{ answer.text }}
-          </label>
-        </li>
-      {% endfor %}
-    </ul>
-    <input type="submit" value="Submit">
-  </form>
-  {% if not quiz_attempt.is_finished %}
-    <hr>
-    <button class="answer-button" data-answer-id="{{ answer.id }}" data-quiz-attempt-id="{{ quiz_attempt.id }}" type="button">{{ answer.text }}</button>
-  {% else %}
-    <p>Congratulations, you have completed the quiz!</p>
-    <a href="{% url 'quiz_result' quiz_attempt.quiz.id %}">View Results</a>
-  {% endif %}
 {% endblock %}
+
 {% block extra_js %}
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
   <script>
     var quiz_id = {{ quiz.id }};
     var questions = {{ questions|safe }};
-    var current_question = 0;
+    var current_question = {{ current_question }};
     var total_score = 0;
     function submitAnswer(answer_id, quiz_attempt_id) {
       var data = {'quiz_attempt_id': quiz_attempt_id, 'question_id': questions[current_question].id, 'answer_id': answer_id};
-      $.post('{% url "quiz_submit_answer"', data, function(response) {
-        // Обработка ответа
+      $.post('{% url "quiz_submit_answer" quiz_attempt_id %}', data, function(response) {
         console.log(response);
         if (response.is_correct) {
-          // Если ответ верный, добавляем баллы к общему счету
           total_score += response.score;
         }
-        // Переходим к следующему вопросу
         current_question++;
-        // Если это был последний вопрос, перенаправляем на страницу результатов
         if (current_question == questions.length) {
-          window.location.href = "{% url 'quiz_result' quiz_id=quiz_attempt.quiz.id quiz_attempt_id=quiz_attempt.id %}";
+          window.location.href = "{% url 'quiz_result' quiz_attempt_id=quiz_attempt_id %}";
         } else {
-          // Иначе, обновляем содержимое страницы
-          $('#question-container').load("{% url 'quiz_question' quiz_attempt.quiz.id quiz_attempt_id current_question %}");
+          $('#question-container').load("{% url 'quiz_question' quiz_attempt_id=quiz_attempt_id current_question=current_question %}");
         }
       });
     }
-    // Обработчик клика по кнопке с ответом
     $('.answer-button').click(function() {
       var answer_id = $(this).data('answer-id');
       var quiz_attempt_id = $(this).data('quiz-attempt-id');

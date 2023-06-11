@@ -141,7 +141,7 @@ def quiz_take(request, quiz_id):
     context = {'quiz': quiz}
     return render(request, 'quiz_start.html', context)
 
-
+@login_required
 def quiz_start(request, quiz_id, question_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
     quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
