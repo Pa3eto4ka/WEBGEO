@@ -6,6 +6,9 @@ from django.urls import reverse
 from django.shortcuts import redirect
 from django.views.generic import View
 from django.utils import timezone
+from django.db.models.fields import IntegerField
+from django.urls import reverse_lazy
+from django.views.generic import ListView, CreateView
 
 QUESTION_TYPE_CHOICES = [('text', 'Текстовый'), ('single_choice', 'Указать позицию'),
                          ('multiple_choice', 'Выбрать правильный')]
@@ -48,36 +51,32 @@ class City(models.Model):
         return self.name
 
 
-class Quiz(models.Model):
-    id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=255)
-    name = models.CharField(max_length=100)
-    category = models.CharField(max_length=50)
-    description = models.TextField()
-    created_date = models.DateTimeField(auto_now_add=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    is_private = models.BooleanField(default=True)
-    allowed_users = models.ManyToManyField(User, related_name='allowed_users', blank=True)
+class Category(models.Model):
+    id = models.BigAutoField(primary_key=True)
+    name = models.CharField(max_length=50)
+    description = models.TextField(blank=True, null=True)
+    quiz_count = models.IntegerField(default=0)
 
-    objects = models.Manager()
+    class Meta:
+        verbose_name_plural = "categories"
 
     def __str__(self):
-        return self.title
+        return self.name
 
-    def clean(self):
-        if not self.title:
-            raise ValidationError("Title is required.")
 
-    def get_absolute_url(self):
-        return reverse('quiz-detail', args=[str(self.id)])
+class CategoryCreateView(CreateView):
+    model = Category
+    fields = ['name', 'description']
+    success_url = reverse_lazy('add_quiz')
+    template_name = 'category.html'
 
 
 class Question(models.Model):
     id = models.BigAutoField(primary_key=True)
-    quiz = models.ForeignKey(Quiz, related_name='questions', on_delete=models.CASCADE)
+    quiz = models.ForeignKey('Quiz', related_name='question', on_delete=models.CASCADE)
     title = models.CharField(max_length=200, blank=True, null=True)
     content = models.TextField(blank=True, null=True)
-    category = models.CharField(max_length=50, blank=True, null=True)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name='category_questions')
     text = models.CharField(max_length=255)
     question_type = models.CharField(choices=QUESTION_TYPE_CHOICES, max_length=20)
     latitude = models.DecimalField(max_digits=20, decimal_places=13, default=0)
@@ -97,6 +96,36 @@ class Question(models.Model):
         return self.text
 
 
+class Quiz(models.Model):
+    id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=255)
+    name = models.CharField(max_length=100)
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='category_quizzes')
+    description = models.TextField()
+    created_date = models.DateTimeField(auto_now_add=True)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    is_private = models.BooleanField(default=True)
+    allowed_users = models.ManyToManyField(User, related_name='allowed_users', blank=True)
+    time_limit = models.IntegerField(
+        default=0, help_text='Quiz time limit in seconds. 0 = No limit')
+    questions_per_attempt = models.IntegerField(
+        default=0, help_text='Number of questions displayed for each quiz attempt. 0 = All questions')
+
+    objects = models.Manager()
+    random_order = models.BooleanField(default=False)
+    questions = models.ManyToManyField(Question, related_name='quiz_questions')
+
+    def __str__(self):
+        return self.title
+
+    def clean(self):
+        if not self.title:
+            raise ValidationError("Title is required.")
+
+    def get_absolute_url(self):
+        return reverse('quiz-detail', args=[str(self.id)])
+
+
 class Answer(models.Model):
     id = models.BigAutoField(primary_key=True)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
@@ -111,7 +140,7 @@ class Answer(models.Model):
 
 class QuizAttempt(models.Model):
     id = models.BigAutoField(primary_key=True)
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE)
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='quiz_attempts')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     date_started = models.DateTimeField(auto_now_add=True)
     date_completed = models.DateTimeField(null=True)
@@ -120,6 +149,18 @@ class QuizAttempt(models.Model):
 
     def __str__(self):
         return str(self.id)
+
+    def get_score(self):
+        total_questions = self.quiz.questions.count()
+        correct_answers = self.results.filter(is_correct=True).count()
+        return int((correct_answers / total_questions) * 100)
+
+    def save(self, *args, **kwargs):
+        if not self.id and not kwargs.get('force_insert', False):
+            self.date_started = timezone.now()
+        if self.date_completed:
+            self.score = self.get_score()
+        super().save(*args, **kwargs)
 
 
 class MapObject(models.Model):
@@ -173,7 +214,7 @@ class GeoObjectGroup(models.Model):
 
 class UserAnswer(models.Model):
     id = models.BigAutoField(primary_key=True)
-    attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE)
+    quiz_attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     answer = models.ForeignKey(Answer, on_delete=models.CASCADE, null=True)
     latitude = models.FloatField()
@@ -184,6 +225,7 @@ class UserAnswer(models.Model):
 
 class QuizResult(models.Model):
     id = models.AutoField(primary_key=True)
+    quiz_attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE, related_name='results')
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='User')
     quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, verbose_name='Quiz')
     question = models.ForeignKey(Question, on_delete=models.CASCADE, verbose_name="Question")
@@ -196,10 +238,6 @@ class QuizResult(models.Model):
 
     def __str__(self):
         return f"{self.user.name} - {self.question.text}"
-
-    def __init__(self, quiz_attempt=None, **kwargs):
-        self.quiz_attempt = quiz_attempt
-        super().__init__(**kwargs)
 
     def save(self, *args, **kwargs):
         if not self.quiz_attempt:
@@ -234,6 +272,7 @@ class CompletedQuiz(models.Model):
 
 
 class AttemptAnswer(models.Model):
+    id = models.BigAutoField(primary_key=True)
     quiz_attempt = models.ForeignKey(QuizAttempt, on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     user_answer = models.CharField(max_length=255)

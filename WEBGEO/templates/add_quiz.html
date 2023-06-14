@@ -1,5 +1,3 @@
-{% extends 'base.html' %}
-
 {% block content %}
   <div class="container py-5">
     <div class="row justify-content-center">
@@ -23,10 +21,25 @@
                 <textarea name="description" id="description" class="form-control border-0 rounded-lg bg-secondary text-white" rows="4" required></textarea>
               </div>
 
+              <div class="form-group mb-4">
+                <label for="category" class="font-weight-bold text-secondary mb-0">Категория:</label>
+                <div class="input-group">
+                  <select name="category" id="category" class="form-control border-0 rounded-pill bg-secondary text-white" required>
+                    <option value="">-- выберите категорию --</option>
+                    {% for category in categories %}
+                      <option value="{{ category.id }}">{{ category.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <div class="input-group-append">
+                    <button type="button" id="create-category" class="btn btn-primary rounded-pill">Создать новую категорию</button>
+                  </div>
+                </div>
+              </div>
+
+
               <div class="form-group text-center">
                 <button type="submit" class="btn btn-lg btn-primary rounded-pill px-5 py-2 text-white font-weight-bold">Создать викторину</button>
               </div>
-
             </form>
           </div>
         </div>
@@ -55,4 +68,33 @@
 
   <!-- Подключение Bootstrap CSS -->
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+
+  <!-- Подключение jQuery -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+
+<script>
+    $(document).ready(function() {
+      // При загрузке страницы скрываем поле ввода новой категории
+      $('#new-category').hide();
+
+      // Привязка обработчика клика для кнопки "Создать новую категорию"
+      $('#create-category').click(function() {
+        location.href = "{% url 'category-create' %}";
+      });
+
+      // При изменении значения поля "Категория"
+      $('#category').change(function() {
+        var selectedValue = $(this).val();
+
+        // Если выбрано "Создать новую категорию"
+        if (selectedValue === 'create-new') {
+        $('#category').prop('disabled', true);
+        $('#new-category').show();
+        } else {
+        $('#category').prop('disabled', false);
+        $('#new-category').hide();
+        }
+      });
+    });
+  </script>
 {% endblock %}

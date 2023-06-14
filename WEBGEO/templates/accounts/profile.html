@@ -28,7 +28,9 @@
 
             <div class="quiz__card-buttons">
               <a href="{% url 'add_question' quiz.id %}" class="quiz__card-button">Добавить вопрос</a>
-              <a href="{% url 'quiz_start' quiz_id=quiz.id question_id=1 %}" class="quiz__card-button">Пройти викторину</a>
+              {% if not quiz.is_empty %}
+              <a href="{% url 'quiz_start' quiz_id=quiz.id question_id=quiz_question.first.id|default:'0' %}" class="quiz__card-button">Пройти викторину</a>
+              {% endif %}
             </div>
           </div>
         {% endfor %}

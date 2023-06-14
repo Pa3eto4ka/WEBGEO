@@ -2,6 +2,7 @@ from django.urls import include
 from django.contrib import admin
 from django.urls import path
 from . import views
+from .models import CategoryCreateView
 
 app_name = 'WEBGO'
 
@@ -37,7 +38,7 @@ urlpatterns = [
     path('add_geo_objects', views.add_geo_objects, name='add_geo_objects'),
     path('quiz_result/<int:quiz_attempt_id>/', views.quiz_result, name='quiz_result'),
     path('quiz_question/<int:quiz_attempt_id>/<int:current_question_number>/', views.quiz_question, name='quiz_question'),
-    path('quiz_submit_answer/', views.quiz_submit_answer, name='quiz_submit_answer'),
     path('quiz_submit_answer/<int:quiz_attempt_id>/', views.quiz_submit_answer, name='quiz_submit_answer'),
+    path('categories/create/', CategoryCreateView.as_view(), name='category-create'),
     #path('check_answer/', check_answer, name='check_answer'),
 ]

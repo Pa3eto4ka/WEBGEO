@@ -1,5 +1,5 @@
 from django import forms
-from .models import Quiz, Question, Answer, MapObject, GeoObject, GeoObjectGroup
+from .models import Quiz, Question, Answer, MapObject, GeoObject, GeoObjectGroup, QuizResult, QuizAttempt
 from django.core.validators import MinValueValidator, MaxValueValidator
 
 
@@ -61,8 +61,32 @@ class MarkOnMapForm(forms.Form):
     longitude = forms.DecimalField(label='Долгота', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
 
 
-
 class ChooseOnMapForm(forms.Form):
     latitude = forms.DecimalField(label='Широта', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
     longitude = forms.DecimalField(label='Долгота', max_digits=20, decimal_places=10, widget=forms.HiddenInput())
 
+
+class QuizResultForm(forms.ModelForm):
+    question = forms.ModelChoiceField(queryset=Question.objects.all(), widget=forms.HiddenInput())
+
+    class Meta:
+        model = QuizResult
+        fields = ['question', 'answer']
+
+    def __init__(self, quiz, user, *args, **kwargs):
+        self.quiz = quiz
+        self.user = user
+        super().__init__(*args, **kwargs)
+        self.fields['question'].queryset = Question.objects.filter(quiz=quiz)
+
+    def save(self, commit=True):
+        question = self.cleaned_data['question']
+        quiz_result, created = QuizResult.objects.get_or_create(
+            quiz=self.quiz,
+            user=self.user,
+            question=question
+        )
+        quiz_result.answer = self.cleaned_data['answer']
+        if commit:
+            quiz_result.save()
+        return quiz_result

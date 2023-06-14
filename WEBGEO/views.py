@@ -6,12 +6,13 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.urls import reverse
 from django.utils import timezone
+import json
 
 from django.contrib.auth.models import User, Group
 from .forms import QuestionForm, QuizForm, GeoObjectForm, GeoObjectGroupForm, ChooseOnMapForm, MarkOnMapForm, TextForm, \
-    AnswerForm
+    AnswerForm, QuizResultForm
 from .models import QuizAttempt, Answer, Question, Quiz, GeoObject, GeoObjectGroup, QuizResult, UserAnswer, \
-    CompletedQuiz, AttemptAnswer
+    CompletedQuiz, AttemptAnswer, Category
 
 
 # функция для проверки, является ли пользователь суперпользователем
@@ -62,6 +63,17 @@ def home(request):
 def profile(request):
     user = request.user
     quizzes_list = Quiz.objects.filter(user=user).order_by('id')
+    question_id = None
+
+    # добавляем проверку количества вопросов к каждой викторине
+    for quiz in quizzes_list:
+        quiz_questions = quiz.questions.filter(quiz=quiz)
+        if len(quiz_questions) > 0:
+            question_id = quiz_questions.first().id
+            quiz.is_empty = True
+        else:
+            quiz.is_empty = False
+            question_id = 0
 
     paginator = Paginator(quizzes_list, 6)  # 6 - количество элементов на одной странице
     page = request.GET.get('page')
@@ -76,6 +88,7 @@ def profile(request):
     context = {
         'user': user,
         'quizzes': quizzes,
+        'question_id': question_id,
     }
 
     return render(request, 'accounts/profile.html', context)
@@ -109,11 +122,22 @@ def quiz_list(request):
 @login_required
 def quiz_start(request, quiz_id, question_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
-    quiz_attempt, created = QuizAttempt.objects.get_or_create(user=request.user, quiz=quiz)
-    question = get_object_or_404(Question, pk=question_id)
+
+    if not question_id:
+        question = quiz.question_set.first()
+        return redirect(reverse('quiz_start', args=[quiz_id, question.id]))
+    else:
+        question = get_object_or_404(Question, pk=question_id)
+
     quiz_questions = list(Question.objects.filter(quiz=quiz).order_by('pk'))
     current_question_number = quiz_questions.index(question) + 1
     total_questions = len(quiz_questions)
+    current_question = current_question_number - 1
+
+    quiz_attempt, created = QuizAttempt.objects.get_or_create(
+        user=request.user,
+        quiz=quiz,
+    )
 
     if request.method == 'POST':
         form = None
@@ -139,12 +163,12 @@ def quiz_start(request, quiz_id, question_id):
                 attempt_answer.answer_text = form.cleaned_data.get('answer_text')
             attempt_answer.save()
             messages.success(request, 'Ваш ответ на вопрос был сохранен.')
-            next_question = quiz_questions[quiz_questions.index(question) + 1] if quiz_questions.index(question) < len(quiz_questions) - 1 else None
-            if next_question:
-                # если есть следующий вопрос, перенаправляем на страницу со следующим вопросом
+            next_question = None
+            quiz_question_index = quiz_questions.index(question)
+            if quiz_question_index < len(quiz_questions) - 1:
+                next_question = quiz_questions[quiz_question_index + 1]
                 return redirect(reverse('quiz_start', args=[quiz_id, next_question.pk]))
             else:
-                # иначе, перенаправляем на страницу результатов
                 return redirect(reverse('quiz_result', args=[quiz_id]))
         else:
             messages.error(request, 'Проверьте правильность заполнения формы.')
@@ -165,6 +189,7 @@ def quiz_start(request, quiz_id, question_id):
         'quiz_attempt_id': quiz_attempt.id,
         'current_question_number': current_question_number,
         'total_questions': total_questions,
+        'current_question': current_question,
     })
 
 
@@ -178,33 +203,22 @@ def quiz_next_question(request, quiz_attempt_id):
     return JsonResponse({'question_text': question.text})
 
 
-@login_required
-def quiz_submit_answer(request, quiz_attempt_id):
-    """
-    Отправка ответа при прохождении теста
-    """
-    quiz_attempt = get_object_or_404(QuizAttempt, id=quiz_attempt_id)
-    answer_text = request.POST.get('answer_text')
-    question = quiz_attempt.get_current_question()
-    answer = Answer.objects.create(question=question, text=answer_text, attempt=quiz_attempt)
-    correct = answer.check_correctness()
-    return JsonResponse({'correct': correct})
-
-
 def add_quiz(request):
     """
     Добавление нового теста
     """
+    categories = Category.objects.all()
     if request.method == 'POST':
         form = QuizForm(request.POST)
         if form.is_valid():
             quiz = form.save(commit=False)
             quiz.user = request.user
+            quiz.category_id = request.POST.get('category')
             quiz.save()
-            return redirect('home')
-
-    form = QuizForm()
-    return render(request, 'add_quiz.html', {'form': form})
+            return redirect('profile')
+    else:
+        form = QuizForm()
+    return render(request, 'add_quiz.html', {'form': form, 'categories': categories})
 
 
 def questions(request, quiz_id):
@@ -218,7 +232,7 @@ def questions(request, quiz_id):
 @login_required
 def quiz_edit(request, quiz_id):
     quiz = get_object_or_404(Quiz, pk=quiz_id)
-    quiz_questions = quiz.questions.all()
+    quiz_questions = quiz.question.all()
 
     if request.method == 'POST':
         form = QuizForm(request.POST, instance=quiz)
@@ -339,15 +353,15 @@ def quiz_question(request, quiz_attempt_id, current_question):
 
 
 @login_required
-def quiz_result(request, quiz_id):
-    quiz = get_object_or_404(Quiz, pk=quiz_id)
-    quiz_results = QuizResult.objects.filter(user=request.user, quiz=quiz)
+def quiz_result(request, quiz_attempt_id):
+    quiz_attempt = get_object_or_404(QuizAttempt, pk=quiz_attempt_id, user=request.user)
+    quiz_results = quiz_attempt.results.all()
     if not quiz_results:
         raise Http404("No results found for the current user and quiz.")
     quizzes_results_count = quiz_results.count()
     correct_answers_count = sum(result.is_correct for result in quiz_results)
     return render(request, 'quiz_result.html', {
-        'quiz': quiz,
+        'quiz': quiz_attempt.quiz,
         'correct_answers_count': correct_answers_count,
         'quizzes_results_count': quizzes_results_count,
         'quiz_results': quiz_results,
@@ -405,29 +419,19 @@ def check_answer(request):
 
 
 @login_required
-def quiz_submit_answer(request):
+def quiz_submit_answer(request, quiz_attempt_id):
+    quiz_attempt = get_object_or_404(QuizAttempt, id=int(quiz_attempt_id))
+    quiz = quiz_attempt.quiz
+    question_id = int(request.POST.get('question_id'))
+    question = get_object_or_404(Question, pk=question_id)
     if request.method == 'POST':
-        question = Question.objects.get(id=request.POST['question_id'])
-        quiz = question.quiz
-        if question.question_type == 'ChooseOne':
-            selected_choice = get_object_or_404(Answer, id=request.POST.get('answer_id'))
-            if selected_choice.is_correct:
-                score = 1
-            else:
-                score = 0
-            result, created = QuizResult.objects.get_or_create(quiz=quiz, user=request.user)
-            result.score += score
-            result.save()
-            return JsonResponse({'status': 'OK', 'score': score})
-        elif question.question_type == 'EnterText':
-            submitted_text = request.POST.get('answer_text', '').strip()
-            if submitted_text.lower() == question.answer_set.first().text.lower():
-                score = 1
-            else:
-                score = 0
-            result, created = QuizResult.objects.get_or_create(quiz=quiz, user=request.user)
-            result.score += score
-            result.save()
-            return JsonResponse({'status': 'OK', 'score': score})
+        quiz_res = QuizResult.objects.filter(quiz_attempt=quiz_attempt, question=question).first()
+        form = QuizResultForm(request.POST, user=request.user, instance=quiz_res)
+        if form.is_valid():
+            result = form.save()
+            score = result.score
+            print("Score: ", score)
+            return JsonResponse({'status': 'OK', 'score': score, 'quiz_attempt_id': quiz_attempt_id})
     else:
-        return JsonResponse({'status': 'ERROR', 'message': 'Invalid request method.'})
+        print("Request method is not POST")
+    return JsonResponse({'status': 'ERROR', 'message': 'Invalid request method.'})
